@@ -4,7 +4,7 @@ import pytest
 from hamcrest import assert_that, equal_to
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
 
 from graphjoiner import execute, single, many, Entity, RootEntity
 
@@ -26,33 +26,44 @@ class Book(Base):
 
 
 class DatabaseEntity(Entity):
+    def __init__(self, session):
+        super(DatabaseEntity, self).__init__(session)
+        self._session = session
+        
     def fetch_immediates(self, request):
-        query = request.context.add_columns(*(
+        query = request.context.with_entities(*(
             self.fields[field]
             for field in request.requested_fields
         ))
         
         return [
             dict(zip(request.requested_fields, row))
-            for row in query.all()
+            for row in query.with_session(self._session).all()
         ]
 
         
 class AuthorEntity(DatabaseEntity):
-    def __init__(self, session):
-        super(AuthorEntity, self).__init__(session)
-        self._session = session
+    def _book_context(author_query):
+        authors = author_query.with_entities(Author.id).distinct().subquery()
+        return Query([]) \
+            .select_from(Book) \
+            .join(authors, authors.c.id == Book.author_id)
         
+    
     fields = {
         "id": "id",
         "name": "name",
-        "books": many(lambda: BookEntity, join={"id": "authorId"}),
+        "books": many(
+            lambda: BookEntity,
+            join={"id": "authorId"},
+            generate_context=_book_context,
+        ),
     }
     
     def generate_context(self, request):
         query = request.context
         if query is None:
-            query = self._session.query().select_from(Author)
+            query = Query([]).select_from(Author)
         
         author_id = request.args.get("id")
         if author_id is not None:
@@ -62,15 +73,21 @@ class AuthorEntity(DatabaseEntity):
 
 
 class BookEntity(DatabaseEntity):
-    def __init__(self, session):
-        super(BookEntity, self).__init__(session)
-        self._session = session
-    
+    def _author_context(book_query):
+        books = book_query.with_entities(Book.author_id).distinct().subquery()
+        return Query([]) \
+            .select_from(Author) \
+            .join(books, books.c.author_id == Author.id)
+            
     fields = {
         "id": "id",
         "title": "title",
         "authorId": "author_id",
-        "author": single(AuthorEntity, join={"authorId": "id"}),
+        "author": single(
+            AuthorEntity,
+            join={"authorId": "id"},
+            generate_context=_author_context,
+        ),
     }
     
     def generate_context(self, request):
