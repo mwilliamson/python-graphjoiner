@@ -108,7 +108,7 @@ We then define object types for the root, books and authors:
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
-                .join(books, books.c.author_id == Author.id)
+                .join(books, Author.id == books.c.author_id)
     
     class AuthorObjectType(DatabaseObjectType):
         @classmethod
@@ -212,7 +212,7 @@ This means we need to define ``BookObjectType``:
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
-                .join(books, books.c.author_id == Author.id)
+                .join(books, Author.id == books.c.author_id)
 
 The ``author`` field is defined as a one-to-one mapping from book to author.
 As before, we define a function that generates a query for the requested authors.
@@ -245,6 +245,27 @@ original GraphQL query, or are required as part of the join.
                 dict(zip(request.requested_fields, row))
                 for row in query.all()
             ]
+
+For completeness, we can tweak the definition of ``AuthorObjectType`` so
+we can request the books by an author:
+
+.. code-block:: python
+    
+    class AuthorObjectType(DatabaseObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "id": "id",
+                "name": "name",
+                "author": many(BookObjectType, cls._book_query, join={"id": "authorId"}),
+            }
+        
+        @classmethod
+        def _book_query(cls, request, author_query):
+            authors = author_query.with_entities(Author.id).distinct().subquery()
+            return Query([]) \
+                .select_from(Book) \
+                .join(authors, Book.id == authors.c.author_id)
 
 Installation
 ------------
