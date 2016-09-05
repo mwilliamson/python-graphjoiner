@@ -32,11 +32,17 @@ all_books = [
 
 
 class AuthorEntity(Entity):
-    fields = {
-        "id": "id",
-        "name": "name",
-        "books": many(lambda: BookEntity, join={"id": "authorId"}, generate_context=lambda *_: all_books),
-    }
+    @staticmethod
+    def fields():
+        return {
+            "id": "id",
+            "name": "name",
+            "books": many(
+                BookEntity,
+                lambda *_: all_books,
+                join={"id": "authorId"},
+            ),
+        }
     
     def generate_context(self, request, authors):
         author_id = request.args.get("id")
@@ -46,7 +52,7 @@ class AuthorEntity(Entity):
         return authors
     
     def fetch_immediates(self, request, authors):
-        requested_attrs = [self.fields[field] for field in request.requested_fields]
+        requested_attrs = [self.fields()[field] for field in request.requested_fields]
         
         def read_author(author):
             return dict((attr, getattr(author, attr)) for attr in requested_attrs)
@@ -55,12 +61,18 @@ class AuthorEntity(Entity):
 
 
 class BookEntity(Entity):
-    fields = {
-        "id": "id",
-        "title": "title",
-        "authorId": "author_id",
-        "author": single(AuthorEntity, join={"authorId": "id"}, generate_context=lambda *_: all_authors),
-    }
+    @staticmethod
+    def fields():
+        return {
+            "id": "id",
+            "title": "title",
+            "authorId": "author_id",
+            "author": single(
+                AuthorEntity,
+                lambda *_: all_authors,
+                join={"authorId": "id"},
+            ),
+        }
     
     def generate_context(self, request, books):
         return books
@@ -68,7 +80,7 @@ class BookEntity(Entity):
     def fetch_immediates(self, request, books):
         def read_book(book):
             return dict(
-                (field, getattr(book, self.fields[field]))
+                (field, getattr(book, self.fields()[field]))
                 for field in request.requested_fields
             )
         
@@ -76,10 +88,12 @@ class BookEntity(Entity):
 
 
 class Root(RootEntity):
-    fields = {
-        "books": many(BookEntity, generate_context=lambda *_: all_books),
-        "author": single(AuthorEntity, generate_context=lambda *_: all_authors),
-    }
+    @staticmethod
+    def fields():
+        return {
+            "books": many(BookEntity, lambda *_: all_books),
+            "author": single(AuthorEntity, lambda *_: all_authors),
+        }
     
 
 def test_querying_list_of_entities():

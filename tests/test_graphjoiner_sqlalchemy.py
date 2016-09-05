@@ -32,7 +32,7 @@ class DatabaseEntity(Entity):
         
     def fetch_immediates(self, request, query):
         query = query.with_entities(*(
-            self.fields[field]
+            self.fields()[field]
             for field in request.requested_fields
         ))
         
@@ -40,23 +40,27 @@ class DatabaseEntity(Entity):
             dict(zip(request.requested_fields, row))
             for row in query.with_session(self._session).all()
         ]
-
-def _author_to_book_context(request, author_query):
-    authors = author_query.with_entities(Author.id).distinct().subquery()
-    return Query([]) \
-        .select_from(Book) \
-        .join(authors, authors.c.id == Book.author_id)
+        
         
 class AuthorEntity(DatabaseEntity):
-    fields = {
-        "id": "id",
-        "name": "name",
-        "books": many(
-            lambda: BookEntity,
-            join={"id": "authorId"},
-            generate_context=_author_to_book_context,
-        ),
-    }
+    @classmethod
+    def fields(cls):
+        return {
+            "id": "id",
+            "name": "name",
+            "books": many(
+                BookEntity,
+                cls._book_query,
+                join={"id": "authorId"},
+            ),
+        }
+
+    @classmethod
+    def _book_query(cls, request, author_query):
+        authors = author_query.with_entities(Author.id).distinct().subquery()
+        return Query([]) \
+            .select_from(Book) \
+            .join(authors, authors.c.id == Book.author_id)
     
     def generate_context(self, request, query):
         author_id = request.args.get("id")
@@ -66,34 +70,38 @@ class AuthorEntity(DatabaseEntity):
         return query
 
 
-def _book_to_author_context(request, book_query):
-    books = book_query.with_entities(Book.author_id).distinct().subquery()
-    return Query([]) \
-        .select_from(Author) \
-        .join(books, books.c.author_id == Author.id)
-
-
 class BookEntity(DatabaseEntity):
-    fields = {
-        "id": "id",
-        "title": "title",
-        "authorId": "author_id",
-        "author": single(
-            AuthorEntity,
-            join={"authorId": "id"},
-            generate_context=_book_to_author_context,
-        ),
-    }
+    @classmethod
+    def fields(cls):
+        return {
+            "id": "id",
+            "title": "title",
+            "authorId": "author_id",
+            "author": single(
+                AuthorEntity,
+                cls._author_query,
+                join={"authorId": "id"},
+            ),
+        }
+    
+    @classmethod
+    def _author_query(cls, request, book_query):
+        books = book_query.with_entities(Book.author_id).distinct().subquery()
+        return Query([]) \
+            .select_from(Author) \
+            .join(books, books.c.author_id == Author.id)
     
     def generate_context(self, request, query):
         return query
     
 
 class Root(RootEntity):
-    fields = {
-        "books": many(BookEntity, lambda *_: Query([]).select_from(Book)),
-        "author": single(AuthorEntity, lambda *_: Query([]).select_from(Author)),
-    }
+    @classmethod
+    def fields(cls):
+        return {
+            "books": many(BookEntity, lambda *_: Query([]).select_from(Book)),
+            "author": single(AuthorEntity, lambda *_: Query([]).select_from(Author)),
+        }
     
 
 def test_querying_list_of_entities(session):

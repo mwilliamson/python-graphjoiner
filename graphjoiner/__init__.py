@@ -97,9 +97,10 @@ def many(entity_cls, generate_context, **kwargs):
 
 class Entity(Value):
     def __init__(self, *args, **kwargs):
-        self._fields = lambda: dict(
+        generate_fields = self.fields
+        self.fields = lambda: dict(
             (field_name, self._instantiate_field(field, args, kwargs))
-            for field_name, field in self.fields.items()
+            for field_name, field in generate_fields().items()
         )
 
     def _instantiate_field(self, field, args, kwargs):
@@ -119,7 +120,7 @@ class Entity(Value):
     def fetch(self, request, context):
         child_context = self.generate_context(request, context)
 
-        fields = self._fields()
+        fields = self.fields()
 
         requested_fields = request.children.keys()
         requested_immediate_fields = [
