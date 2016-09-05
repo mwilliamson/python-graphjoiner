@@ -61,7 +61,7 @@ We then define object types for the root, books and authors:
 
 .. code-block:: python
 
-    from graphjoiner import RootObjectType, single, many
+    from graphjoiner import ObjectType, RootObjectType, single, many
 
     class Root(RootObjectType):
         @classmethod
