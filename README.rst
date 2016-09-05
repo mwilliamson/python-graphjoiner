@@ -91,7 +91,7 @@ root instance). We then describe how to generate a query that represents all of
 the books in the database.
 
 We still need to define ``BookObjectType``.
-In this case, ``fields`` maps each GraphQL property to the column name in the database.
+In this case, ``fields`` maps each GraphQL field to the column name in the database.
 We also define a method ``fetch_immediates`` that tells GraphJoiner
 how to fetch the fields for books that can be fetched without a join.
 
@@ -126,6 +126,7 @@ We can then execute the query by calling ``execute``:
             books {
                 id
                 title
+                authorId
             }
         }
     """
@@ -141,14 +142,17 @@ Which produces:
             {
                 "id": 1,
                 "title": "Leave It to Psmith",
+                "authorId": 1,
             },
             {
                 "id": 2,
                 "title": "Right Ho, Jeeves",
+                "authorId": 1,
             },
             {
                 "id": 3,
                 "title": "Catch-22",
+                "authorId": 2,
             },
         ]
     }
