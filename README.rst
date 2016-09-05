@@ -7,9 +7,7 @@ of concept that provides an alternative way of responding to GraphQL queries.
 
 In the reference GraphQL implementation, resolve functions describe how to
 fulfil some part of the requested data for each instance of an object.
-GraphJoiner instead maps nodes in the query to a single query that will fetch
-the relevant values for all instances.
-
+If implemented naively with a SQL backend, this results in the N+1 problem.
 For instance, given the query:
 
 ::
@@ -23,14 +21,17 @@ For instance, given the query:
         }
     }
 
-GraphJoiner expects the ``books`` node to be mapped to one query that fetches
-all books in the comedy genre, and the author node to be mapped to one query
-that fetches all authors of books in the comedy genre.
+A naive GraphQL implement would issue one SQL query to get the list of all
+books in the comedy genre, and then N queries to get the author of each book
+(where N is the number of books returned by the first query).
+
+There are various solutions proposed to this problem: GraphJoiner suggests that
+using joins is a natural fit for many use cases. For this specific case, we only
+need to run two queries: one to find the list of all books in the comedy genre,
+and one to get the authors of books in the comedy genre.
 
 Example
 -------
-
-(Working code for this example can be found in ``tests/test_graphjoiner/sqlalchemy.py``.)
 
 Let's say we have some models defined by SQLAlchemy. A book has an ID, a title
 and an author ID. An author has an ID and a name.
@@ -53,26 +54,14 @@ and an author ID. An author has an ID and a name.
         
         id = Column(Integer, primary_key=True)
         title = Column(Unicode, nullable=False)
+        genre = Column(Unicode, nullable=False)
         author_id = Column(Integer, ForeignKey(Author.id))
 
-We then need to tell GraphJoiner how to query each model. Let's say we want to
-respond to the query:
-
-.. code-block:: none
-
-    {
-        books {
-            id
-            title
-            authorId
-        }
-    }
-
-We first define a root object type:
+We then define object types for the root, books and authors:
 
 .. code-block:: python
 
-    from graphjoiner import RootObjectType, many
+    from graphjoiner import RootObjectType, single, many
 
     class Root(RootObjectType):
         @classmethod
@@ -83,135 +72,19 @@ We first define a root object type:
         
         @classmethod
         def _books_query(cls, request, _):
-            return Query([]).select_from(Book)
-
-We use the ``many`` function to define a one-to-many relationship -- that is,
-that are many books for each root instance (and in fact, there's only ever one
-root instance). We then describe how to generate a query that represents all of
-the books in the database.
-
-We still need to define ``BookObjectType``.
-In this case, ``fields`` maps each GraphQL field to the column name in the database.
-We also define a method ``fetch_immediates`` that tells GraphJoiner
-how to fetch the fields for books that can be fetched without a join.
-
-.. code-block:: python
-
-    from graphjoiner import ObjectType
-
-    class BookObjectType(ObjectType):
-        @classmethod
-        def fields(cls):
-            return {
-                "id": "id",
-                "title": "title",
-                "authorId": "author_id",
-            }
-        
-        def fetch_immediates(self, request, book_query):
-            query = book_query.with_entities(*(
-                self.fields[field]
-                for field in request.requested_fields
-            ))
+            query = Query([]).select_from(Book)
             
-            return [
-                dict(zip(request.requested_fields, row))
-                for row in query.all()
-            ]
-
-We can then execute the query by calling ``execute``:
-
-.. code-block:: python
+            if "genre" in request.args:
+                query = query.filter(Book.genre == request.args["genre"])
+                
+            return query
     
-    query = """
-        {
-            books {
-                id
-                title
-                authorId
-            }
-        }
-    """
-    execute(Root(), query)
-
-
-Which produces:
-
-::
-
-    {
-        "books": [
-            {
-                "id": 1,
-                "title": "Leave It to Psmith",
-                "authorId": 1,
-            },
-            {
-                "id": 2,
-                "title": "Right Ho, Jeeves",
-                "authorId": 1,
-            },
-            {
-                "id": 3,
-                "title": "Catch-22",
-                "authorId": 2,
-            },
-        ]
-    }
-
-
-Arguments
-~~~~~~~~~
-
-What about if we want to respond to a query that includes arguments?
-For instance:
-
-::
-    
-    {
-        author(id: 1) {
-            name
-        }
-    }
-
-We need to add an ``author`` field to the ``fields`` method on ``RootEntity``.
-Since this represent one instance instead of many, we use ``single`` instead of
-``many`` to define the relationship:
-
-.. code-block:: python
-
-    from graphjoiner import RootObjectType, single, many
-
-    class Root(RootObjectType):
-        @classmethod
-        def fields(cls):
-            return {
-                "books": many(BookObjectType, cls._books_query),
-                "author": single(AuthorObjectType, cls._author_query),
-            }
-        
-        @classmethod
-        def _books_query(cls, request, _):
-            return Query([]).select_from(Book)
-        
-        @classmethod
-        def _author_query(cls, request, _):
-            return Query([]) \
-                .select_from(Author) \
-                .filter(Author.id == request.args["id"])
-
-We then define ``AuthorObjectType`` in much the same way we defined
-``BookObjectType``. In fact, our definition for ``fetch_immediates`` will be
-exactly the same, so we can extract a common base class:
-
-.. code-block:: python
-
-    from graphjoiner import ObjectType
 
     class DatabaseObjectType(ObjectType):
         def fetch_immediates(self, request, query):
+            fields = self.fields()
             query = query.with_entities(*(
-                self.fields[field]
+                fields[field]
                 for field in request.requested_fields
             ))
             
@@ -226,90 +99,46 @@ exactly the same, so we can extract a common base class:
             return {
                 "id": "id",
                 "title": "title",
+                "genre": "genre",
                 "authorId": "author_id",
-            }
-    
-    class AuthorObjectType(DatabaseObjectType):
-        @classmethod
-        def fields(cls):
-            return {
-                "id": "id",
-                "name": "name",
-            }
-
-As before, we can execute the query by calling ``execute``:
-
-.. code-block:: python
-    
-    query = """
-        {
-            author(id: 1) {
-                name
-            }
-        }
-    """
-    execute(Root(), query)
-
-
-Which produces:
-
-::
-
-    {
-        "author": {
-            "name": "PG Wodehouse",
-        }
-    }
-
-Joins
-~~~~~
-
-Suppose we want to find the name of an author, and all of the books they wrote:
-
-::
-    
-    {
-        author(id: 1) {
-            name
-            books {
-                title
-            }
-        }
-    }
-
-We need to tweak the ``author`` field so that it contains a relationship from
-authors to books:
-
-    class AuthorObjectType(DatabaseObjectType):
-        @classmethod
-        def fields(cls):
-            return {
-                "id": "id",
-                "name": "name",
-                "books": many(BookObjectType, cls._books_query, join={"id": "authorId"}),
+                "author": single(AuthorObjectType, cls._author_query, join={"authorId": "id"}),
             }
         
-        def _books_query(cls, request, author_query):
-            authors = author_query.with_entities(Author.id).distinct().subquery()
+        @classmethod
+        def _author_query(cls, request, book_query):
+            books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
-                .select_from(Book) \
-                .join(authors, authors.c.id == Book.author_id)
+                .select_from(Author) \
+                .join(books, books.c.author_id == Author.id)
+    
+    class AuthorObjectType(DatabaseObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "id": "id",
+                "name": "name",
+            }
 
-The function ``_books_query`` maps a query for authors into a query for books
-by those authors. The ``join`` argument then describes how to join the results
-of those queries together: in this case, the ``id`` field on an author
-corresponds to the ``authorId`` field on a book.
+A few things could do with some explanation:
 
-As before, we can execute the query by calling ``execute``:
+* ``fetch_immediates(self, request, query)``:
+
+* ``single()``:
+
+* ``many()``:
+
+We can execute the query by calling ``execute``:
 
 .. code-block:: python
     
+    from graphjoiner import execute
+    
     query = """
         {
-            author(id: 1) {
-                name
-                books {
-                    title
+            books(genre: "comedy") {
+                title
+                author {
+                    name
                 }
             }
         }
@@ -322,17 +151,26 @@ Which produces:
 ::
 
     {
-        "author": {
-            "name": "PG Wodehouse",
-            "books": [
-                {
-                    "title": "Leave It to Psmith",
-                },
-                {
-                    "title": "Right Ho, Jeeves",
-                },
-            ]
-        }
+        "books": [
+            {
+                "title": "Leave It to Psmith",
+                "author": {
+                    "name": "PG Wodehouse"
+                }
+            },
+            {
+                "title": "Right Ho, Jeeves",
+                "author": {
+                    "name": "PG Wodehouse"
+                }
+            },
+            {
+                "title": "Catch-22",
+                "author": {
+                    "name": "Joseph Heller"
+                }
+            },
+        ]
     }
 
 Installation
