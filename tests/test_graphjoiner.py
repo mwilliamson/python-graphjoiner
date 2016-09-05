@@ -3,7 +3,7 @@ from datetime import datetime
 from attr import attrs, attrib
 from hamcrest import assert_that, equal_to
 
-from graphjoiner import execute, single, many, Entity, RootEntity
+from graphjoiner import execute, single, many, ObjectType, RootObjectType
 
 
 @attrs
@@ -31,14 +31,14 @@ all_books = [
 ]
 
 
-class AuthorEntity(Entity):
+class AuthorObjectType(ObjectType):
     @staticmethod
     def fields():
         return {
             "id": "id",
             "name": "name",
             "books": many(
-                BookEntity,
+                BookObjectType,
                 lambda *_: all_books,
                 join={"id": "authorId"},
             ),
@@ -53,7 +53,7 @@ class AuthorEntity(Entity):
         return list(map(read_author, authors))
 
 
-class BookEntity(Entity):
+class BookObjectType(ObjectType):
     @staticmethod
     def fields():
         return {
@@ -61,7 +61,7 @@ class BookEntity(Entity):
             "title": "title",
             "authorId": "author_id",
             "author": single(
-                AuthorEntity,
+                AuthorObjectType,
                 lambda *_: all_authors,
                 join={"authorId": "id"},
             ),
@@ -77,12 +77,12 @@ class BookEntity(Entity):
         return list(map(read_book, books))
 
 
-class Root(RootEntity):
+class Root(RootObjectType):
     @classmethod
     def fields(cls):
         return {
-            "books": many(BookEntity, lambda *_: all_books),
-            "author": single(AuthorEntity, cls._author_query),
+            "books": many(BookObjectType, lambda *_: all_books),
+            "author": single(AuthorObjectType, cls._author_query),
         }
     
     @classmethod

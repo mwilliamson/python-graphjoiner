@@ -68,17 +68,17 @@ respond to the query:
         }
     }
 
-We first define a root entity:
+We first define a root object type:
 
 .. code-block:: python
 
-    from graphjoiner import RootEntity, many
+    from graphjoiner import RootObjectType, many
 
-    class Root(RootEntity):
+    class Root(RootObjectType):
         @classmethod
         def fields(cls):
             return {
-                "books": many(BookEntity, cls._books_query)
+                "books": many(BookObjectType, cls._books_query)
             }
         
         @classmethod
@@ -86,20 +86,20 @@ We first define a root entity:
             return Query([]).select_from(Book)
 
 We use the ``many`` function to define a one-to-many relationship -- that is,
-that are many books for each root entity (and in fact, there's only ever one
-root entity). We then describe how to generate a query that represents all of
+that are many books for each root instance (and in fact, there's only ever one
+root instance). We then describe how to generate a query that represents all of
 the books in the database.
 
-We still need to define ``BooksEntity``.
+We still need to define ``BookObjectType``.
 In this case, ``fields`` maps each GraphQL property to the column name in the database.
 We also define a method ``fetch_immediates`` that tells GraphJoiner
 how to fetch the fields for books that can be fetched without a join.
 
 .. code-block:: python
 
-    from graphjoiner import Entity
+    from graphjoiner import ObjectType
 
-    class BookEntity(Entity):
+    class BookObjectType(ObjectType):
         fields = {
             "id": "id",
             "title": "title",

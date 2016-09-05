@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
-from graphjoiner import execute, single, many, Entity, RootEntity
+from graphjoiner import execute, single, many, ObjectType, RootObjectType
 
 
 Base = declarative_base()
@@ -25,9 +25,9 @@ class Book(Base):
     author_id = Column(Integer, ForeignKey(Author.id))
 
 
-class DatabaseEntity(Entity):
+class DatabaseObjectType(ObjectType):
     def __init__(self, session):
-        super(DatabaseEntity, self).__init__(session)
+        super(DatabaseObjectType, self).__init__(session)
         self._session = session
         
     def fetch_immediates(self, request, query):
@@ -42,14 +42,14 @@ class DatabaseEntity(Entity):
         ]
         
         
-class AuthorEntity(DatabaseEntity):
+class AuthorObjectType(DatabaseObjectType):
     @classmethod
     def fields(cls):
         return {
             "id": "id",
             "name": "name",
             "books": many(
-                BookEntity,
+                BookObjectType,
                 cls._book_query,
                 join={"id": "authorId"},
             ),
@@ -63,7 +63,7 @@ class AuthorEntity(DatabaseEntity):
             .join(authors, authors.c.id == Book.author_id)
 
 
-class BookEntity(DatabaseEntity):
+class BookObjectType(DatabaseObjectType):
     @classmethod
     def fields(cls):
         return {
@@ -71,7 +71,7 @@ class BookEntity(DatabaseEntity):
             "title": "title",
             "authorId": "author_id",
             "author": single(
-                AuthorEntity,
+                AuthorObjectType,
                 cls._author_query,
                 join={"authorId": "id"},
             ),
@@ -85,12 +85,12 @@ class BookEntity(DatabaseEntity):
             .join(books, books.c.author_id == Author.id)
     
 
-class Root(RootEntity):
+class Root(RootObjectType):
     @classmethod
     def fields(cls):
         return {
-            "books": many(BookEntity, lambda *_: Query([]).select_from(Book)),
-            "author": single(AuthorEntity, cls._author_query),
+            "books": many(BookObjectType, lambda *_: Query([]).select_from(Book)),
+            "author": single(AuthorObjectType, cls._author_query),
         }
     
     @classmethod
