@@ -79,7 +79,6 @@ We then define object types for the root, books and authors:
                 
             return query
     
-
     class DatabaseObjectType(ObjectType):
         def fetch_immediates(self, request, query):
             fields = self.fields()
@@ -118,14 +117,6 @@ We then define object types for the root, books and authors:
                 "id": "id",
                 "name": "name",
             }
-
-A few things could do with some explanation:
-
-* ``fetch_immediates(self, request, query)``:
-
-* ``single()``:
-
-* ``many()``:
 
 We can execute the query by calling ``execute``:
 
@@ -172,6 +163,89 @@ Which produces:
             },
         ]
     }
+
+Let's break things down a little, starting with the definition of the root object:
+
+.. code-block:: python
+
+    class Root(RootObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "books": many(BookObjectType, cls._books_query)
+            }
+        
+        @classmethod
+        def _books_query(cls, request, _):
+            query = Query([]).select_from(Book)
+            
+            if "genre" in request.args:
+                query = query.filter(Book.genre == request.args["genre"])
+                
+            return query
+
+For each object type, we need to define its fields.
+The root has only one field, ``books``, a one-to-many relationship,
+which we define using ``many()``.
+The first argument, ``BookObjectType``,
+is the object type we're defining a relationship to.
+The second argument to describes how to create a query representing all of those
+related books: in this case all books, potentially filtered by a genre argument.
+
+This means we need to define ``BookObjectType``:
+
+.. code-block:: python
+
+    class BookObjectType(DatabaseObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "id": "id",
+                "title": "title",
+                "genre": "genre",
+                "authorId": "author_id",
+                "author": single(AuthorObjectType, cls._author_query, join={"authorId": "id"}),
+            }
+        
+        @classmethod
+        def _author_query(cls, request, book_query):
+            books = book_query.with_entities(Book.author_id).distinct().subquery()
+            return Query([]) \
+                .select_from(Author) \
+                .join(books, books.c.author_id == Author.id)
+
+The ``author`` field is define as a one-to-one mapping from book to author.
+As before, we define a function that generates a query for the requested authors.
+We join on the query for the books to ensure we only fetch the authors we need.
+We also provide a ``join`` argument to ``single()`` so that GraphJoiner knows
+how to join together the results of the author query and the book query:
+in this case, the ``authorId`` field on books corresponds to the ``id` field
+on authors.
+(Note that we didn't need a ``join`` argument when defining ``books`` on the
+root object since there's always exactly one root instance, making the join
+trivial.)
+
+The remaining fields define a mapping from the GraphQL field to the database
+column. This mapping is handled by the implementation of ``fetch_immediates()``
+in ``DatabaseObjectType``. The value of ``request.requested_fields`` in
+``fetch_immediates()`` is the fields that aren't defined as relationships
+(using ``single`` or ``many``) that were either explicitly requested in the
+original GraphQL query, or are required as part of the join.
+
+.. code-block:: python
+
+    class DatabaseObjectType(ObjectType):
+        def fetch_immediates(self, request, query):
+            fields = self.fields()
+            query = query.with_entities(*(
+                fields[field]
+                for field in request.requested_fields
+            ))
+            
+            return [
+                dict(zip(request.requested_fields, row))
+                for row in query.all()
+            ]
 
 Installation
 ------------
