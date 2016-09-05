@@ -100,11 +100,13 @@ how to fetch the fields for books that can be fetched without a join.
     from graphjoiner import ObjectType
 
     class BookObjectType(ObjectType):
-        fields = {
-            "id": "id",
-            "title": "title",
-            "authorId": "author_id",
-        }
+        @classmethod
+        def fields(cls):
+            return {
+                "id": "id",
+                "title": "title",
+                "authorId": "author_id",
+            }
         
         def fetch_immediates(self, request, book_query):
             query = book_query.with_entities(*(
@@ -155,6 +157,108 @@ Which produces:
                 "authorId": 2,
             },
         ]
+    }
+
+
+Arguments
+~~~~~~~~~
+
+What about if we want to respond to a query that includes arguments?
+For instance:
+
+::
+    
+    {
+        author(id: 1) {
+            name
+        }
+    }
+
+We need to add an ``author`` field to the ``fields`` method on ``RootEntity``.
+Since this represent one instance instead of many, we use ``single`` instead of
+``many`` to define the relationship:
+
+.. code-block:: python
+
+    from graphjoiner import RootObjectType, single, many
+
+    class Root(RootObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "books": many(BookObjectType, cls._books_query),
+                "author": single(AuthorObjectType, cls._author_query),
+            }
+        
+        @classmethod
+        def _books_query(cls, request, _):
+            return Query([]).select_from(Book)
+        
+        @classmethod
+        def _author_query(cls, request, _):
+            return Query([]) \
+                .select_from(Author) \
+                .filter(Author.id == request.args["id"])
+
+We then define ``AuthorObjectType`` in much the same way we defined
+``BookObjectType``. In fact, our definition for ``fetch_immediates`` will be
+exactly the same, so we can extract a common base class:
+
+.. code-block:: python
+
+    from graphjoiner import ObjectType
+
+    class DatabaseObjectType(ObjectType):
+        def fetch_immediates(self, request, query):
+            query = query.with_entities(*(
+                self.fields[field]
+                for field in request.requested_fields
+            ))
+            
+            return [
+                dict(zip(request.requested_fields, row))
+                for row in query.all()
+            ]
+
+    class BookObjectType(DatabaseObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "id": "id",
+                "title": "title",
+                "authorId": "author_id",
+            }
+    
+    class AuthorObjectType(DatabaseObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "id": "id",
+                "name": "name",
+            }
+
+As before, we can execute the query by calling ``execute``:
+
+.. code-block:: python
+    
+    query = """
+        {
+            author(id: 1) {
+                name
+            }
+        }
+    """
+    execute(Root(), query)
+
+
+Which produces:
+
+.. code-block::
+
+    {
+        "author": {
+            "name": "PG Wodehouse",
+        }
     }
 
 
