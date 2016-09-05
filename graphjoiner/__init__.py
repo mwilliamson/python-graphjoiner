@@ -110,16 +110,10 @@ class Entity(Value):
             return field
 
     @abc.abstractmethod
-    def generate_context(self, request, context):
-        pass
-
-    @abc.abstractmethod
     def fetch_immediates(self, request, context):
         pass
 
     def fetch(self, request, context):
-        child_context = self.generate_context(request, context)
-
         fields = self.fields()
 
         requested_fields = request.children.keys()
@@ -147,14 +141,14 @@ class Entity(Value):
                 request,
                 children=dict((field, None) for field in fetch_fields),
             ),
-            child_context,
+            context,
         )
 
         for field_name, field in fields.items():
             if isinstance(field, Relationship):
                 field_request = request.children.get(field_name)
                 if field_request is not None:
-                    children = field.fetch(request.children.get(field_name), child_context)
+                    children = field.fetch(request.children.get(field_name), context)
                     for result in results:
                         result[field_name] = children.get(field.parent_join_values(result), field.default_value)
 

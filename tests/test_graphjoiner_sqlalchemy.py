@@ -61,13 +61,6 @@ class AuthorEntity(DatabaseEntity):
         return Query([]) \
             .select_from(Book) \
             .join(authors, authors.c.id == Book.author_id)
-    
-    def generate_context(self, request, query):
-        author_id = request.args.get("id")
-        if author_id is not None:
-            query = query.filter(Author.id == author_id)
-        
-        return query
 
 
 class BookEntity(DatabaseEntity):
@@ -91,17 +84,24 @@ class BookEntity(DatabaseEntity):
             .select_from(Author) \
             .join(books, books.c.author_id == Author.id)
     
-    def generate_context(self, request, query):
-        return query
-    
 
 class Root(RootEntity):
     @classmethod
     def fields(cls):
         return {
             "books": many(BookEntity, lambda *_: Query([]).select_from(Book)),
-            "author": single(AuthorEntity, lambda *_: Query([]).select_from(Author)),
+            "author": single(AuthorEntity, cls._author_query),
         }
+    
+    @classmethod
+    def _author_query(cls, request, _):
+        query = Query([]).select_from(Author)
+        
+        author_id = request.args.get("id")
+        if author_id is not None:
+            query = query.filter(Author.id == author_id)
+        
+        return query
     
 
 def test_querying_list_of_entities(session):

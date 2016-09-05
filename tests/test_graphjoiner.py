@@ -44,13 +44,6 @@ class AuthorEntity(Entity):
             ),
         }
     
-    def generate_context(self, request, authors):
-        author_id = request.args.get("id")
-        if author_id is not None:
-            authors = list(filter(lambda author: author.id == int(author_id), authors))
-        
-        return authors
-    
     def fetch_immediates(self, request, authors):
         requested_attrs = [self.fields()[field] for field in request.requested_fields]
         
@@ -74,9 +67,6 @@ class BookEntity(Entity):
             ),
         }
     
-    def generate_context(self, request, books):
-        return books
-    
     def fetch_immediates(self, request, books):
         def read_book(book):
             return dict(
@@ -88,12 +78,23 @@ class BookEntity(Entity):
 
 
 class Root(RootEntity):
-    @staticmethod
-    def fields():
+    @classmethod
+    def fields(cls):
         return {
             "books": many(BookEntity, lambda *_: all_books),
-            "author": single(AuthorEntity, lambda *_: all_authors),
+            "author": single(AuthorEntity, cls._author_query),
         }
+    
+    @classmethod
+    def _author_query(cls, request, _):
+        authors = all_authors
+        
+        author_id = request.args.get("id")
+        if author_id is not None:
+            authors = list(filter(lambda author: author.id == int(author_id), authors))
+        
+        return authors
+        
     
 
 def test_querying_list_of_entities():
