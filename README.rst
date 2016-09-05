@@ -137,7 +137,7 @@ We can then execute the query by calling ``execute``:
 
 Which produces:
 
-.. code-block::
+::
 
     {
         "books": [
@@ -253,7 +253,7 @@ As before, we can execute the query by calling ``execute``:
 
 Which produces:
 
-.. code-block::
+::
 
     {
         "author": {
@@ -261,6 +261,79 @@ Which produces:
         }
     }
 
+Joins
+~~~~~
+
+Suppose we want to find the name of an author, and all of the books they wrote:
+
+::
+    
+    {
+        author(id: 1) {
+            name
+            books {
+                title
+            }
+        }
+    }
+
+We need to tweak the ``author`` field so that it contains a relationship from
+authors to books:
+
+    class AuthorObjectType(DatabaseObjectType):
+        @classmethod
+        def fields(cls):
+            return {
+                "id": "id",
+                "name": "name",
+                "books": many(BookObjectType, cls._books_query, join={"id": "authorId"}),
+            }
+        
+        def _books_query(cls, request, author_query):
+            authors = author_query.with_entities(Author.id).distinct().subquery()
+            return Query([]) \
+                .select_from(Book) \
+                .join(authors, authors.c.id == Book.author_id)
+
+The function ``_books_query`` maps a query for authors into a query for books
+by those authors. The ``join`` argument then describes how to join the results
+of those queries together: in this case, the ``id`` field on an author
+corresponds to the ``authorId`` field on a book.
+
+As before, we can execute the query by calling ``execute``:
+
+.. code-block:: python
+    
+    query = """
+        {
+            author(id: 1) {
+                name
+                books {
+                    title
+                }
+            }
+        }
+    """
+    execute(Root(), query)
+
+
+Which produces:
+
+::
+
+    {
+        "author": {
+            "name": "PG Wodehouse",
+            "books": [
+                {
+                    "title": "Leave It to Psmith",
+                },
+                {
+                    "title": "Right Ho, Jeeves",
+                },
+            ]
+        }
+    }
 
 Installation
 ------------
