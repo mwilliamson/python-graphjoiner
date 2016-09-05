@@ -249,5 +249,7 @@ original GraphQL query, or are required as part of the join.
 Installation
 ------------
 
+::
+
     pip install graphjoiner
 
