@@ -62,7 +62,7 @@ that can be fetched without a join.
             "authorId": "author_id",
         }
         
-        def fetch_immediates(self, request):
+        def fetch_immediates(self, request, context):
             query = session.query().select_from(Book).with_entities(*(
                 self.fields[field]
                 for field in request.requested_fields

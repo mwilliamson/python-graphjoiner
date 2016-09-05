@@ -5,7 +5,6 @@ from attr import attrs, attrib
 class Request(object):
     args = attrib()
     children = attrib()
-    context = attrib()
     join_fields = attrib(default=[])
 
     @property
@@ -24,7 +23,6 @@ def request_from_graphql_ast(ast):
     return Request(
         args,
         children,
-        context=None
     )
     
 def _graphql_children(ast):

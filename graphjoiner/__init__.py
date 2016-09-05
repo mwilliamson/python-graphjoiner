@@ -10,7 +10,7 @@ from .requests import request_from_graphql_ast
 
 def execute(root_entity, query):
     request = request_from_graphql_ast(parse(query).definitions[0])
-    return root_entity.fetch(request)[0].value
+    return root_entity.fetch(request, None)[0].value
 
 
 class Result(object):
@@ -40,7 +40,7 @@ class RelationshipDefinition(object):
 class Relationship(object):
     def __init__(self, entity, process_results, default_value, generate_context=None, join=None):
         if generate_context is None:
-            generate_context = lambda request: None
+            generate_context = lambda request, context: None
         if join is None:
             join = {}
 
@@ -57,10 +57,10 @@ class Relationship(object):
     def parent_join_values(self, parent):
         return tuple(parent[join_field] for join_field in self._join.keys())
 
-    def fetch(self, request):
-        child_context = self._generate_context(request.context)
-        child_request = assoc(request, context=child_context, join_fields=self._join.values())
-        results = self._entity.fetch(child_request)
+    def fetch(self, request, context):
+        child_context = self._generate_context(request, context)
+        child_request = assoc(request, join_fields=self._join.values())
+        results = self._entity.fetch(child_request, child_context)
         key_func = lambda result: result.join_values
         return dict(
             (key, self._process_results([result.value for result in results]))
@@ -109,15 +109,15 @@ class Entity(Value):
             return field
 
     @abc.abstractmethod
-    def generate_context(self, context):
+    def generate_context(self, request, context):
         pass
 
     @abc.abstractmethod
-    def fetch_immediates(self, request):
+    def fetch_immediates(self, request, context):
         pass
 
-    def fetch(self, request):
-        child_context = self.generate_context(request)
+    def fetch(self, request, context):
+        child_context = self.generate_context(request, context)
 
         fields = self._fields()
 
@@ -141,17 +141,19 @@ class Entity(Value):
 
         fetch_fields = list(set(requested_immediate_fields + list(request.join_fields) + join_to_children_fields))
 
-        results = self.fetch_immediates(assoc(
-            request,
-            children=dict((field, None) for field in fetch_fields),
-            context=child_context,
-        ))
+        results = self.fetch_immediates(
+            assoc(
+                request,
+                children=dict((field, None) for field in fetch_fields),
+            ),
+            child_context,
+        )
 
         for field_name, field in fields.items():
             if isinstance(field, Relationship):
                 field_request = request.children.get(field_name)
                 if field_request is not None:
-                    children = field.fetch(assoc(request.children.get(field_name), context=child_context))
+                    children = field.fetch(request.children.get(field_name), child_context)
                     for result in results:
                         result[field_name] = children.get(field.parent_join_values(result), field.default_value)
 
@@ -165,8 +167,8 @@ class Entity(Value):
 
 
 class RootEntity(Entity):
-    def generate_context(self, request):
+    def generate_context(self, request, context):
         return None
     
-    def fetch_immediates(self, request):
+    def fetch_immediates(self, request, context):
         return [{}]

@@ -19,12 +19,12 @@ class Author(object):
     name = attrib()
 
 
-authors = [
+all_authors = [
     Author(1, "PG Wodehouse"),
     Author(2, "Joseph Heller"),
 ]
 
-books = [
+all_books = [
     Book(id=1, title="Leave It to Psmith", author_id=1),
     Book(id=2, title="Right Ho, Jeeves", author_id=1),
     Book(id=3, title="Catch-22", author_id=2),
@@ -35,25 +35,23 @@ class AuthorEntity(Entity):
     fields = {
         "id": "id",
         "name": "name",
-        "books": many(lambda: BookEntity, join={"id": "authorId"}),
+        "books": many(lambda: BookEntity, join={"id": "authorId"}, generate_context=lambda *_: all_books),
     }
     
-    def generate_context(self, request):
-        context = authors
-        
+    def generate_context(self, request, authors):
         author_id = request.args.get("id")
         if author_id is not None:
-            context = list(filter(lambda author: author.id == int(author_id), context))
+            authors = list(filter(lambda author: author.id == int(author_id), authors))
         
-        return context
+        return authors
     
-    def fetch_immediates(self, request):
+    def fetch_immediates(self, request, authors):
         requested_attrs = [self.fields[field] for field in request.requested_fields]
         
         def read_author(author):
             return dict((attr, getattr(author, attr)) for attr in requested_attrs)
         
-        return list(map(read_author, request.context))
+        return list(map(read_author, authors))
 
 
 class BookEntity(Entity):
@@ -61,13 +59,13 @@ class BookEntity(Entity):
         "id": "id",
         "title": "title",
         "authorId": "author_id",
-        "author": single(AuthorEntity, join={"authorId": "id"}),
+        "author": single(AuthorEntity, join={"authorId": "id"}, generate_context=lambda *_: all_authors),
     }
     
-    def generate_context(self, request):
-        return None
+    def generate_context(self, request, books):
+        return books
     
-    def fetch_immediates(self, request):
+    def fetch_immediates(self, request, books):
         def read_book(book):
             return dict(
                 (field, getattr(book, self.fields[field]))
@@ -79,8 +77,8 @@ class BookEntity(Entity):
 
 class Root(RootEntity):
     fields = {
-        "books": many(BookEntity),
-        "author": single(AuthorEntity),
+        "books": many(BookEntity, generate_context=lambda *_: all_books),
+        "author": single(AuthorEntity, generate_context=lambda *_: all_authors),
     }
     
 

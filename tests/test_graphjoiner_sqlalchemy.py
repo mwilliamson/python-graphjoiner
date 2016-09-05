@@ -30,8 +30,8 @@ class DatabaseEntity(Entity):
         super(DatabaseEntity, self).__init__(session)
         self._session = session
         
-    def fetch_immediates(self, request):
-        query = request.context.with_entities(*(
+    def fetch_immediates(self, request, query):
+        query = query.with_entities(*(
             self.fields[field]
             for field in request.requested_fields
         ))
@@ -41,27 +41,24 @@ class DatabaseEntity(Entity):
             for row in query.with_session(self._session).all()
         ]
 
+def _author_to_book_context(request, author_query):
+    authors = author_query.with_entities(Author.id).distinct().subquery()
+    return Query([]) \
+        .select_from(Book) \
+        .join(authors, authors.c.id == Book.author_id)
         
 class AuthorEntity(DatabaseEntity):
-    def _book_context(author_query):
-        authors = author_query.with_entities(Author.id).distinct().subquery()
-        return Query([]) \
-            .select_from(Book) \
-            .join(authors, authors.c.id == Book.author_id)
-        
-    
     fields = {
         "id": "id",
         "name": "name",
         "books": many(
             lambda: BookEntity,
             join={"id": "authorId"},
-            generate_context=_book_context,
+            generate_context=_author_to_book_context,
         ),
     }
     
-    def generate_context(self, request):
-        query = request.context
+    def generate_context(self, request, query):
         if query is None:
             query = Query([]).select_from(Author)
         
@@ -72,13 +69,14 @@ class AuthorEntity(DatabaseEntity):
         return query
 
 
+def _book_to_author_context(request, book_query):
+    books = book_query.with_entities(Book.author_id).distinct().subquery()
+    return Query([]) \
+        .select_from(Author) \
+        .join(books, books.c.author_id == Author.id)
+
+
 class BookEntity(DatabaseEntity):
-    def _author_context(book_query):
-        books = book_query.with_entities(Book.author_id).distinct().subquery()
-        return Query([]) \
-            .select_from(Author) \
-            .join(books, books.c.author_id == Author.id)
-            
     fields = {
         "id": "id",
         "title": "title",
@@ -86,12 +84,11 @@ class BookEntity(DatabaseEntity):
         "author": single(
             AuthorEntity,
             join={"authorId": "id"},
-            generate_context=_author_context,
+            generate_context=_book_to_author_context,
         ),
     }
     
-    def generate_context(self, request):
-        query = request.context
+    def generate_context(self, request, query):
         if query is None:
             query = self._session.query().select_from(Book)
             
