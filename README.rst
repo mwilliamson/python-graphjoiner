@@ -214,9 +214,8 @@ This means we need to define ``BookObjectType``:
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
 
-The ``author`` field is define as a one-to-one mapping from book to author.
+The ``author`` field is defined as a one-to-one mapping from book to author.
 As before, we define a function that generates a query for the requested authors.
-We join on the query for the books to ensure we only fetch the authors we need.
 We also provide a ``join`` argument to ``single()`` so that GraphJoiner knows
 how to join together the results of the author query and the book query:
 in this case, the ``authorId`` field on books corresponds to the ``id` field
