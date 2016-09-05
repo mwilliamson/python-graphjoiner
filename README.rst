@@ -218,7 +218,7 @@ The ``author`` field is defined as a one-to-one mapping from book to author.
 As before, we define a function that generates a query for the requested authors.
 We also provide a ``join`` argument to ``single()`` so that GraphJoiner knows
 how to join together the results of the author query and the book query:
-in this case, the ``authorId`` field on books corresponds to the ``id` field
+in this case, the ``authorId`` field on books corresponds to the ``id`` field
 on authors.
 (Note that we didn't need a ``join`` argument when defining ``books`` on the
 root object since there's always exactly one root instance, making the join
