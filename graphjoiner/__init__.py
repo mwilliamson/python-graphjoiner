@@ -38,9 +38,7 @@ class RelationshipDefinition(object):
 
 
 class Relationship(object):
-    def __init__(self, entity, process_results, default_value, generate_context=None, join=None):
-        if generate_context is None:
-            generate_context = lambda request, context: None
+    def __init__(self, entity, process_results, default_value, generate_context, join=None):
         if join is None:
             join = {}
 
@@ -68,9 +66,10 @@ class Relationship(object):
         )
 
 
-def single(entity_cls, **kwargs):
+def single(entity_cls, generate_context, **kwargs):
     return RelationshipDefinition(
         entity_cls=entity_cls,
+        generate_context=generate_context,
         process_results=_one_or_none,
         default_value=None,
         **kwargs
@@ -86,9 +85,10 @@ def _one_or_none(values):
         return values[0]
 
 
-def many(entity_cls, **kwargs):
+def many(entity_cls, generate_context, **kwargs):
     return RelationshipDefinition(
         entity_cls=entity_cls,
+        generate_context=generate_context,
         process_results=lambda x: x,
         default_value=[],
         **kwargs

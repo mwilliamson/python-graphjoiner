@@ -59,9 +59,6 @@ class AuthorEntity(DatabaseEntity):
     }
     
     def generate_context(self, request, query):
-        if query is None:
-            query = Query([]).select_from(Author)
-        
         author_id = request.args.get("id")
         if author_id is not None:
             query = query.filter(Author.id == author_id)
@@ -89,16 +86,13 @@ class BookEntity(DatabaseEntity):
     }
     
     def generate_context(self, request, query):
-        if query is None:
-            query = self._session.query().select_from(Book)
-            
         return query
     
 
 class Root(RootEntity):
     fields = {
-        "books": many(BookEntity),
-        "author": single(AuthorEntity),
+        "books": many(BookEntity, lambda *_: Query([]).select_from(Book)),
+        "author": single(AuthorEntity, lambda *_: Query([]).select_from(Author)),
     }
     
 
