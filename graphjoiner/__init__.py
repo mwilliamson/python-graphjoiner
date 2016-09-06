@@ -148,7 +148,7 @@ class ObjectType(Value):
             if isinstance(field, Relationship):
                 field_request = request.children.get(field_name)
                 if field_request is not None:
-                    children = field.fetch(request.children.get(field_name), context)
+                    children = field.fetch(field_request, context)
                     for result in results:
                         result[field_name] = children.get(field.parent_join_values(result), field.default_value)
 
