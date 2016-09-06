@@ -108,7 +108,7 @@ We then define object types for the root, books and authors:
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
-                .join(books, Author.id == books.c.author_id)
+                .join(books, books.c.author_id == Author.id)
     
     class AuthorObjectType(DatabaseObjectType):
         @classmethod
@@ -212,7 +212,7 @@ This means we need to define ``BookObjectType``:
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
-                .join(books, Author.id == books.c.author_id)
+                .join(books, books.c.author_id == Author.id)
 
 The ``author`` field is defined as a one-to-one mapping from book to author.
 As before, we define a function that generates a query for the requested authors.
@@ -265,7 +265,7 @@ we can request the books by an author:
             authors = author_query.with_entities(Author.id).distinct().subquery()
             return Query([]) \
                 .select_from(Book) \
-                .join(authors, Book.id == authors.c.author_id)
+                .join(authors, authors.c.id == Book.author_id)
 
 Installation
 ------------
