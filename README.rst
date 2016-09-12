@@ -44,14 +44,14 @@ and an author ID. An author has an ID and a name.
     Base = declarative_base()
 
     class Author(Base):
-    __tablename__ = "author"
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(Unicode, nullable=False)
+        __tablename__ = "author"
+
+        id = Column(Integer, primary_key=True)
+        name = Column(Unicode, nullable=False)
 
     class Book(Base):
         __tablename__ = "book"
-        
+
         id = Column(Integer, primary_key=True)
         title = Column(Unicode, nullable=False)
         genre = Column(Unicode, nullable=False)
@@ -69,16 +69,16 @@ We then define object types for the root, books and authors:
             return {
                 "books": many(BookObjectType, cls._books_query)
             }
-        
+
         @classmethod
         def _books_query(cls, request, _):
             query = Query([]).select_from(Book)
-            
+
             if "genre" in request.args:
                 query = query.filter(Book.genre == request.args["genre"])
-                
+
             return query
-    
+
     class DatabaseObjectType(ObjectType):
         def fetch_immediates(self, request, query):
             fields = self.fields()
@@ -86,7 +86,7 @@ We then define object types for the root, books and authors:
                 fields[field]
                 for field in request.requested_fields
             ))
-            
+
             return [
                 dict(zip(request.requested_fields, row))
                 for row in query.all()
@@ -102,14 +102,14 @@ We then define object types for the root, books and authors:
                 "authorId": "author_id",
                 "author": single(AuthorObjectType, cls._author_query, join={"authorId": "id"}),
             }
-        
+
         @classmethod
         def _author_query(cls, request, book_query):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
-    
+
     class AuthorObjectType(DatabaseObjectType):
         @classmethod
         def fields(cls):
@@ -121,9 +121,9 @@ We then define object types for the root, books and authors:
 We can execute the query by calling ``execute``:
 
 .. code-block:: python
-    
+
     from graphjoiner import execute
-    
+
     query = """
         {
             books(genre: "comedy") {
@@ -174,14 +174,14 @@ Let's break things down a little, starting with the definition of the root objec
             return {
                 "books": many(BookObjectType, cls._books_query)
             }
-        
+
         @classmethod
         def _books_query(cls, request, _):
             query = Query([]).select_from(Book)
-            
+
             if "genre" in request.args:
                 query = query.filter(Book.genre == request.args["genre"])
-                
+
             return query
 
 For each object type, we need to define its fields.
@@ -206,7 +206,7 @@ This means we need to define ``BookObjectType``:
                 "authorId": "author_id",
                 "author": single(AuthorObjectType, cls._author_query, join={"authorId": "id"}),
             }
-        
+
         @classmethod
         def _author_query(cls, request, book_query):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
@@ -240,7 +240,7 @@ original GraphQL query, or are required as part of the join.
                 fields[field]
                 for field in request.requested_fields
             ))
-            
+
             return [
                 dict(zip(request.requested_fields, row))
                 for row in query.all()
@@ -250,7 +250,7 @@ For completeness, we can tweak the definition of ``AuthorObjectType`` so
 we can request the books by an author:
 
 .. code-block:: python
-    
+
     class AuthorObjectType(DatabaseObjectType):
         @classmethod
         def fields(cls):
@@ -259,7 +259,7 @@ we can request the books by an author:
                 "name": "name",
                 "author": many(BookObjectType, cls._book_query, join={"id": "authorId"}),
             }
-        
+
         @classmethod
         def _book_query(cls, request, author_query):
             authors = author_query.with_entities(Author.id).distinct().subquery()
