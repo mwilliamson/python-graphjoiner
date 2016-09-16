@@ -26,8 +26,9 @@ class Book(Base):
 
 
 class DatabaseJoinType(JoinType):
-    def __init__(self, session):
-        super(DatabaseJoinType, self).__init__(session)
+    def __init__(self, session, **kwargs):
+        # TODO: use GraphQL context instead of constructors
+        super(DatabaseJoinType, self).__init__(session, **kwargs)
         self._session = session
         
     def fetch_immediates(self, request, query):
