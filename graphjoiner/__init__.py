@@ -49,7 +49,7 @@ class RelationshipDefinition(object):
 
 
 class Relationship(object):
-    def __init__(self, entity, process_results, default_value, generate_context, join=None):
+    def __init__(self, entity, process_results, generate_context, join=None):
         if join is None:
             join = {}
 
@@ -57,24 +57,34 @@ class Relationship(object):
         self._generate_context = generate_context
         self._join = join
         self._process_results = process_results
-        self.default_value = default_value
 
     @property
     def parent_join_keys(self):
         return self._join.keys()
-
-    def parent_join_values(self, parent):
-        return tuple(parent[join_field] for join_field in self._join.keys())
 
     def fetch(self, request, context):
         child_context = self._generate_context(request, context)
         child_request = assoc(request, join_fields=self._join.values())
         results = self._entity.fetch(child_request, child_context)
         key_func = lambda result: result.join_values
-        return dict(
-            (key, self._process_results([result.value for result in results]))
+        return RelationshipResults(results, self._process_results, self.parent_join_keys)
+
+
+class RelationshipResults(object):
+    def __init__(self, results, process_results, parent_join_keys):
+        key_func = lambda result: result.join_values
+        self._results = dict(
+            (key, [result.value for result in results])
             for key, results in groupby(sorted(results, key=key_func), key=key_func)
         )
+        self._process_results = process_results
+        self._parent_join_keys = parent_join_keys
+    
+    def _parent_join_values(self, parent):
+        return tuple(parent[join_field] for join_field in self._parent_join_keys)
+    
+    def get(self, key):
+        return self._process_results(self._results.get(self._parent_join_values(key), []))
 
 
 def single(entity_cls, generate_context, **kwargs):
@@ -82,7 +92,6 @@ def single(entity_cls, generate_context, **kwargs):
         entity_cls=entity_cls,
         generate_context=generate_context,
         process_results=_one_or_none,
-        default_value=None,
         **kwargs
     )
 
@@ -101,7 +110,6 @@ def many(entity_cls, generate_context, **kwargs):
         entity_cls=entity_cls,
         generate_context=generate_context,
         process_results=lambda x: x,
-        default_value=[],
         **kwargs
     )
 
@@ -161,7 +169,7 @@ class JoinType(Value):
                 if field_request is not None:
                     children = field.fetch(field_request, context)
                     for result in results:
-                        result[field_name] = children.get(field.parent_join_values(result), field.default_value)
+                        result[field_name] = children.get(result)
 
         return [
             Result(
