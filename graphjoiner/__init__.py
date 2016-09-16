@@ -9,8 +9,8 @@ import six
 from .requests import request_from_graphql_ast
 
 
-def execute(root_entity, query):
-    request = request_from_graphql_ast(parse(query).definitions[0])
+def execute(root_entity, query, context=None):
+    request = request_from_graphql_ast(parse(query).definitions[0], context=context)
     return root_entity.fetch(request, None)[0].value
 
 
@@ -88,7 +88,7 @@ class Relationship(object):
                 return source[info.field_name]
         else:
             def resolve(source, args, context, info):
-                request = request_from_graphql_ast(info.field_asts[0])
+                request = request_from_graphql_ast(info.field_asts[0], context=context)
                 return self.fetch(request, None).get(())
                 
         return GraphQLField(

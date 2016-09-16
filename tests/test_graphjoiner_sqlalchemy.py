@@ -25,12 +25,12 @@ class Book(Base):
     author_id = Column(Integer, ForeignKey(Author.id))
 
 
+class QueryContext(object):
+    def __init__(self, session):
+        self.session = session
+
+
 class DatabaseJoinType(JoinType):
-    def __init__(self, session, **kwargs):
-        # TODO: use GraphQL context instead of constructors
-        super(DatabaseJoinType, self).__init__(session, **kwargs)
-        self._session = session
-        
     def fetch_immediates(self, request, query):
         query = query.with_entities(*(
             self.fields()[field].column_name
@@ -39,7 +39,7 @@ class DatabaseJoinType(JoinType):
         
         return [
             dict(zip(request.requested_fields, row))
-            for row in query.with_session(self._session).all()
+            for row in query.with_session(request.context.session).all()
         ]
         
         
@@ -120,4 +120,4 @@ class TestGraphJoinerSqlAlchemy(ExecutionTestCases):
 
         session.commit()
         
-        return execute(Root(session), query)
+        return execute(Root(), query, context=QueryContext(session))
