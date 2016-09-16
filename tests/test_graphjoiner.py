@@ -1,8 +1,9 @@
 from datetime import datetime
 
 from attr import attrs, attrib
+from graphql import GraphQLInt, GraphQLString
 
-from graphjoiner import execute, single, many, JoinType, RootJoinType
+from graphjoiner import execute, single, many, JoinType, RootJoinType, field
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -31,50 +32,46 @@ all_books = [
 ]
 
 
-class AuthorJoinType(JoinType):
+class ObjJoinType(JoinType):
+    def fetch_immediates(self, request, objs):
+        requested_fields = [
+            (field, self.fields()[field].attr)
+            for field in request.requested_fields
+        ]
+        
+        def read_obj(obj):
+            return dict((key, getattr(obj, attr)) for (key, attr) in requested_fields)
+        
+        return list(map(read_obj, objs))
+
+
+class AuthorJoinType(ObjJoinType):
     @staticmethod
     def fields():
         return {
-            "id": "id",
-            "name": "name",
+            "id": field(attr="id", type=GraphQLInt),
+            "name": field(attr="name", type=GraphQLString),
             "books": many(
                 BookJoinType,
                 lambda *_: all_books,
                 join={"id": "authorId"},
             ),
         }
-    
-    def fetch_immediates(self, request, authors):
-        requested_attrs = [self.fields()[field] for field in request.requested_fields]
-        
-        def read_author(author):
-            return dict((attr, getattr(author, attr)) for attr in requested_attrs)
-        
-        return list(map(read_author, authors))
 
 
-class BookJoinType(JoinType):
+class BookJoinType(ObjJoinType):
     @staticmethod
     def fields():
         return {
-            "id": "id",
-            "title": "title",
-            "authorId": "author_id",
+            "id": field(attr="id", type=GraphQLInt),
+            "title": field(attr="title", type=GraphQLString),
+            "authorId": field(attr="author_id", type=GraphQLInt),
             "author": single(
                 AuthorJoinType,
                 lambda *_: all_authors,
                 join={"authorId": "id"},
             ),
         }
-    
-    def fetch_immediates(self, request, books):
-        def read_book(book):
-            return dict(
-                (field, getattr(book, self.fields()[field]))
-                for field in request.requested_fields
-            )
-        
-        return list(map(read_book, books))
 
 
 class Root(RootJoinType):
@@ -96,6 +93,6 @@ class Root(RootJoinType):
         return authors
 
 
-class Tests(ExecutionTestCases):
+class TestGraphJoiner(ExecutionTestCases):
     def execute(self, query):
         return execute(Root(), query)

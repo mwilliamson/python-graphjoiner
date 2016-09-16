@@ -1,10 +1,11 @@
 from datetime import datetime
 
+from graphql import GraphQLInt, GraphQLString
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
-from graphjoiner import execute, single, many, JoinType, RootJoinType
+from graphjoiner import execute, single, many, JoinType, RootJoinType, field
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -31,7 +32,7 @@ class DatabaseJoinType(JoinType):
         
     def fetch_immediates(self, request, query):
         query = query.with_entities(*(
-            self.fields()[field]
+            self.fields()[field].column_name
             for field in request.requested_fields
         ))
         
@@ -45,8 +46,8 @@ class AuthorJoinType(DatabaseJoinType):
     @classmethod
     def fields(cls):
         return {
-            "id": "id",
-            "name": "name",
+            "id": field(column_name="id", type=GraphQLInt),
+            "name": field(column_name="name", type=GraphQLString),
             "books": many(
                 BookJoinType,
                 cls._book_query,
@@ -66,9 +67,9 @@ class BookJoinType(DatabaseJoinType):
     @classmethod
     def fields(cls):
         return {
-            "id": "id",
-            "title": "title",
-            "authorId": "author_id",
+            "id": field(column_name="id", type=GraphQLInt),
+            "title": field(column_name="title", type=GraphQLString),
+            "authorId": field(column_name="author_id", type=GraphQLInt),
             "author": single(
                 AuthorJoinType,
                 cls._author_query,
@@ -103,7 +104,7 @@ class Root(RootJoinType):
         return query
     
 
-class Tests(ExecutionTestCases):
+class TestGraphJoinerSqlAlchemy(ExecutionTestCases):
     def execute(self, query):
         engine = create_engine("sqlite:///:memory:")
 

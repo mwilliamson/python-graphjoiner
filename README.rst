@@ -61,7 +61,8 @@ We then define object types for the root, books and authors:
 
 .. code-block:: python
 
-    from graphjoiner import JoinType, RootJoinType, single, many
+    from graphql import GraphQLInt, GraphQLString
+    from graphjoiner import JoinType, RootJoinType, single, many, field
 
     class Root(RootJoinType):
         @classmethod
@@ -81,25 +82,24 @@ We then define object types for the root, books and authors:
 
     class DatabaseJoinType(JoinType):
         def fetch_immediates(self, request, query):
-            fields = self.fields()
             query = query.with_entities(*(
-                fields[field]
+                self.fields()[field].column_name
                 for field in request.requested_fields
             ))
 
             return [
                 dict(zip(request.requested_fields, row))
-                for row in query.all()
+                for row in query.with_session(self._session).all()
             ]
 
     class BookJoinType(DatabaseJoinType):
         @classmethod
         def fields(cls):
             return {
-                "id": "id",
-                "title": "title",
-                "genre": "genre",
-                "authorId": "author_id",
+                "id": field(column_name="id", type=GraphQLInt),
+                "title": field(column_name="title", type=GraphQLString),
+                "genre": field(column_name="genre", type=GraphQLString),
+                "authorId": field(column_name="author_id", type=GraphQLInt),
                 "author": single(AuthorJoinType, cls._author_query, join={"authorId": "id"}),
             }
 
@@ -114,8 +114,8 @@ We then define object types for the root, books and authors:
         @classmethod
         def fields(cls):
             return {
-                "id": "id",
-                "name": "name",
+                "id": field(column_name="id", type=GraphQLInt),
+                "name": field(column_name="name", type=GraphQLString),
             }
 
 We can execute the query by calling ``execute``:
@@ -200,10 +200,10 @@ This means we need to define ``BookJoinType``:
         @classmethod
         def fields(cls):
             return {
-                "id": "id",
-                "title": "title",
-                "genre": "genre",
-                "authorId": "author_id",
+                "id": field(column_name="id", type=GraphQLInt),
+                "title": field(column_name="title", type=GraphQLString),
+                "genre": field(column_name="genre", type=GraphQLString),
+                "authorId": field(column_name="author_id", type=GraphQLInt),
                 "author": single(AuthorJoinType, cls._author_query, join={"authorId": "id"}),
             }
 
@@ -255,8 +255,8 @@ we can request the books by an author:
         @classmethod
         def fields(cls):
             return {
-                "id": "id",
-                "name": "name",
+                "id": field(column_name="id", type=GraphQLInt),
+                "name": field(column_name="name", type=GraphQLString),
                 "author": many(BookJoinType, cls._book_query, join={"id": "authorId"}),
             }
 

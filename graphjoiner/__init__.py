@@ -25,6 +25,17 @@ class Value(six.with_metaclass(abc.ABCMeta, object)):
         pass
 
 
+def field(**kwargs):
+    return Field(**kwargs)
+
+
+class Field(object):
+    def __init__(self, type, **kwargs):
+        self.type = type
+        for key, value in six.iteritems(kwargs):
+            setattr(self, key, value)
+
+
 class RelationshipDefinition(object):
     def __init__(self, entity_cls, **kwargs):
         self._entity_cls = entity_cls
