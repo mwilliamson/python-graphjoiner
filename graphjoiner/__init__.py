@@ -44,14 +44,14 @@ class Field(object):
 
 
 class Relationship(object):
-    def __init__(self, target, process_results, wrap_type, generate_context, join=None, args=None):
+    def __init__(self, target, process_results, wrap_type, select, join=None, args=None):
         if join is None:
             join = {}
         if args is None:
             args = {}
 
         self._target = target
-        self._generate_context = generate_context
+        self._select = select
         self._join = join
         self._args = args
         self._process_results = process_results
@@ -61,10 +61,10 @@ class Relationship(object):
     def parent_join_keys(self):
         return self._join.keys()
 
-    def fetch(self, request, context):
-        child_context = self._generate_context(request, context)
+    def fetch(self, request, select_parent):
+        select = self._select(request, select_parent)
         child_request = assoc(request, join_fields=self._join.values())
-        results = self._target.fetch(child_request, child_context)
+        results = self._target.fetch(child_request, select)
         key_func = lambda result: result.join_values
         return RelationshipResults(results, self._process_results, self.parent_join_keys)
     
@@ -102,13 +102,13 @@ class RelationshipResults(object):
         return self._process_results(self._results.get(self._parent_join_values(key), []))
 
 
-def single(target, generate_context, **kwargs):
+def single(target, select, **kwargs):
     return Relationship(
         # TODO: Remove instantiation altogether
         # We could probably make JoinType similar to the normal GraphQL types,
         # with some nicer Graphene-like type on top
         target=target._instantiate(),
-        generate_context=generate_context,
+        select=select,
         process_results=_one_or_none,
         wrap_type=lambda graphql_type: graphql_type,
         **kwargs
@@ -124,10 +124,10 @@ def _one_or_none(values):
         return values[0]
 
 
-def many(target, generate_context, **kwargs):
+def many(target, select, **kwargs):
     return Relationship(
         target=target._instantiate(),
-        generate_context=generate_context,
+        select=select,
         process_results=lambda x: x,
         wrap_type=lambda graphql_type: GraphQLList(graphql_type),
         **kwargs
@@ -152,10 +152,10 @@ class JoinType(Value):
         return type(self).__name__
 
     @abc.abstractmethod
-    def fetch_immediates(self, request, context):
+    def fetch_immediates(self, request, select):
         pass
 
-    def fetch(self, request, context):
+    def fetch(self, request, select):
         fields = self.fields()
 
         requested_fields = request.children.keys()
@@ -183,14 +183,14 @@ class JoinType(Value):
                 request,
                 children=dict((field, None) for field in fetch_fields),
             ),
-            context,
+            select,
         )
 
         for field_name, field in fields.items():
             if isinstance(field, Relationship):
                 field_request = request.children.get(field_name)
                 if field_request is not None:
-                    children = field.fetch(field_request, context)
+                    children = field.fetch(field_request, select)
                     for result in results:
                         result[field_name] = children.get(result)
 
@@ -216,8 +216,5 @@ class JoinType(Value):
 
 
 class RootJoinType(JoinType):
-    def generate_context(self, request, context):
-        return None
-    
-    def fetch_immediates(self, request, context):
+    def fetch_immediates(self, request, select):
         return [{}]
