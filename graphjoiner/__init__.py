@@ -39,8 +39,12 @@ class Field(object):
     def to_graphql_field(self):
         return GraphQLField(
             type=self.type,
-            resolver=lambda source, args, context, info: source[info.field_name],
+            resolver=_resolve_fetched_field,
         )
+
+
+def _resolve_fetched_field(source, args, context, info):
+    return source[info.field_name]
 
 
 class Relationship(object):
@@ -71,8 +75,7 @@ class Relationship(object):
     def to_graphql_field(self):
         # TODO: differentiate between root and non-root types properly
         if self._join:
-            def resolve(source, args, context, info):
-                return source[info.field_name]
+            resolve = _resolve_fetched_field
         else:
             def resolve(source, args, context, info):
                 request = request_from_graphql_ast(info.field_asts[0], context=context)
