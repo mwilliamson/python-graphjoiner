@@ -95,7 +95,7 @@ def many(entity_cls, generate_context, **kwargs):
     )
 
 
-class ObjectType(Value):
+class JoinType(Value):
     def __init__(self, *args, **kwargs):
         generate_fields = self.fields
         self.fields = lambda: dict(
@@ -161,7 +161,7 @@ class ObjectType(Value):
         ]
 
 
-class RootObjectType(ObjectType):
+class RootJoinType(JoinType):
     def generate_context(self, request, context):
         return None
     

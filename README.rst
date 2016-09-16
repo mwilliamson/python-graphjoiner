@@ -61,13 +61,13 @@ We then define object types for the root, books and authors:
 
 .. code-block:: python
 
-    from graphjoiner import ObjectType, RootObjectType, single, many
+    from graphjoiner import JoinType, RootJoinType, single, many
 
-    class Root(RootObjectType):
+    class Root(RootJoinType):
         @classmethod
         def fields(cls):
             return {
-                "books": many(BookObjectType, cls._books_query)
+                "books": many(BookJoinType, cls._books_query)
             }
 
         @classmethod
@@ -79,7 +79,7 @@ We then define object types for the root, books and authors:
 
             return query
 
-    class DatabaseObjectType(ObjectType):
+    class DatabaseJoinType(JoinType):
         def fetch_immediates(self, request, query):
             fields = self.fields()
             query = query.with_entities(*(
@@ -92,7 +92,7 @@ We then define object types for the root, books and authors:
                 for row in query.all()
             ]
 
-    class BookObjectType(DatabaseObjectType):
+    class BookJoinType(DatabaseJoinType):
         @classmethod
         def fields(cls):
             return {
@@ -100,7 +100,7 @@ We then define object types for the root, books and authors:
                 "title": "title",
                 "genre": "genre",
                 "authorId": "author_id",
-                "author": single(AuthorObjectType, cls._author_query, join={"authorId": "id"}),
+                "author": single(AuthorJoinType, cls._author_query, join={"authorId": "id"}),
             }
 
         @classmethod
@@ -110,7 +110,7 @@ We then define object types for the root, books and authors:
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
 
-    class AuthorObjectType(DatabaseObjectType):
+    class AuthorJoinType(DatabaseJoinType):
         @classmethod
         def fields(cls):
             return {
@@ -168,11 +168,11 @@ Let's break things down a little, starting with the definition of the root objec
 
 .. code-block:: python
 
-    class Root(RootObjectType):
+    class Root(RootJoinType):
         @classmethod
         def fields(cls):
             return {
-                "books": many(BookObjectType, cls._books_query)
+                "books": many(BookJoinType, cls._books_query)
             }
 
         @classmethod
@@ -187,16 +187,16 @@ Let's break things down a little, starting with the definition of the root objec
 For each object type, we need to define its fields.
 The root has only one field, ``books``, a one-to-many relationship,
 which we define using ``many()``.
-The first argument, ``BookObjectType``,
+The first argument, ``BookJoinType``,
 is the object type we're defining a relationship to.
 The second argument to describes how to create a query representing all of those
 related books: in this case all books, potentially filtered by a genre argument.
 
-This means we need to define ``BookObjectType``:
+This means we need to define ``BookJoinType``:
 
 .. code-block:: python
 
-    class BookObjectType(DatabaseObjectType):
+    class BookJoinType(DatabaseJoinType):
         @classmethod
         def fields(cls):
             return {
@@ -204,7 +204,7 @@ This means we need to define ``BookObjectType``:
                 "title": "title",
                 "genre": "genre",
                 "authorId": "author_id",
-                "author": single(AuthorObjectType, cls._author_query, join={"authorId": "id"}),
+                "author": single(AuthorJoinType, cls._author_query, join={"authorId": "id"}),
             }
 
         @classmethod
@@ -226,14 +226,14 @@ this is fine for relationships defined on the root.)
 
 The remaining fields define a mapping from the GraphQL field to the database
 column. This mapping is handled by the implementation of ``fetch_immediates()``
-in ``DatabaseObjectType``. The value of ``request.requested_fields`` in
+in ``DatabaseJoinType``. The value of ``request.requested_fields`` in
 ``fetch_immediates()`` is the fields that aren't defined as relationships
 (using ``single`` or ``many``) that were either explicitly requested in the
 original GraphQL query, or are required as part of the join.
 
 .. code-block:: python
 
-    class DatabaseObjectType(ObjectType):
+    class DatabaseJoinType(JoinType):
         def fetch_immediates(self, request, query):
             fields = self.fields()
             query = query.with_entities(*(
@@ -246,18 +246,18 @@ original GraphQL query, or are required as part of the join.
                 for row in query.all()
             ]
 
-For completeness, we can tweak the definition of ``AuthorObjectType`` so
+For completeness, we can tweak the definition of ``AuthorJoinType`` so
 we can request the books by an author:
 
 .. code-block:: python
 
-    class AuthorObjectType(DatabaseObjectType):
+    class AuthorJoinType(DatabaseJoinType):
         @classmethod
         def fields(cls):
             return {
                 "id": "id",
                 "name": "name",
-                "author": many(BookObjectType, cls._book_query, join={"id": "authorId"}),
+                "author": many(BookJoinType, cls._book_query, join={"id": "authorId"}),
             }
 
         @classmethod

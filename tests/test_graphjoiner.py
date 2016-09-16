@@ -2,7 +2,7 @@ from datetime import datetime
 
 from attr import attrs, attrib
 
-from graphjoiner import execute, single, many, ObjectType, RootObjectType
+from graphjoiner import execute, single, many, JoinType, RootJoinType
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -31,14 +31,14 @@ all_books = [
 ]
 
 
-class AuthorObjectType(ObjectType):
+class AuthorJoinType(JoinType):
     @staticmethod
     def fields():
         return {
             "id": "id",
             "name": "name",
             "books": many(
-                BookObjectType,
+                BookJoinType,
                 lambda *_: all_books,
                 join={"id": "authorId"},
             ),
@@ -53,7 +53,7 @@ class AuthorObjectType(ObjectType):
         return list(map(read_author, authors))
 
 
-class BookObjectType(ObjectType):
+class BookJoinType(JoinType):
     @staticmethod
     def fields():
         return {
@@ -61,7 +61,7 @@ class BookObjectType(ObjectType):
             "title": "title",
             "authorId": "author_id",
             "author": single(
-                AuthorObjectType,
+                AuthorJoinType,
                 lambda *_: all_authors,
                 join={"authorId": "id"},
             ),
@@ -77,12 +77,12 @@ class BookObjectType(ObjectType):
         return list(map(read_book, books))
 
 
-class Root(RootObjectType):
+class Root(RootJoinType):
     @classmethod
     def fields(cls):
         return {
-            "books": many(BookObjectType, lambda *_: all_books),
-            "author": single(AuthorObjectType, cls._author_query),
+            "books": many(BookJoinType, lambda *_: all_books),
+            "author": single(AuthorJoinType, cls._author_query),
         }
     
     @classmethod

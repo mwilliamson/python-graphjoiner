@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
-from graphjoiner import execute, single, many, ObjectType, RootObjectType
+from graphjoiner import execute, single, many, JoinType, RootJoinType
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -24,9 +24,9 @@ class Book(Base):
     author_id = Column(Integer, ForeignKey(Author.id))
 
 
-class DatabaseObjectType(ObjectType):
+class DatabaseJoinType(JoinType):
     def __init__(self, session):
-        super(DatabaseObjectType, self).__init__(session)
+        super(DatabaseJoinType, self).__init__(session)
         self._session = session
         
     def fetch_immediates(self, request, query):
@@ -41,14 +41,14 @@ class DatabaseObjectType(ObjectType):
         ]
         
         
-class AuthorObjectType(DatabaseObjectType):
+class AuthorJoinType(DatabaseJoinType):
     @classmethod
     def fields(cls):
         return {
             "id": "id",
             "name": "name",
             "books": many(
-                BookObjectType,
+                BookJoinType,
                 cls._book_query,
                 join={"id": "authorId"},
             ),
@@ -62,7 +62,7 @@ class AuthorObjectType(DatabaseObjectType):
             .join(authors, authors.c.id == Book.author_id)
 
 
-class BookObjectType(DatabaseObjectType):
+class BookJoinType(DatabaseJoinType):
     @classmethod
     def fields(cls):
         return {
@@ -70,7 +70,7 @@ class BookObjectType(DatabaseObjectType):
             "title": "title",
             "authorId": "author_id",
             "author": single(
-                AuthorObjectType,
+                AuthorJoinType,
                 cls._author_query,
                 join={"authorId": "id"},
             ),
@@ -84,12 +84,12 @@ class BookObjectType(DatabaseObjectType):
             .join(books, books.c.author_id == Author.id)
     
 
-class Root(RootObjectType):
+class Root(RootJoinType):
     @classmethod
     def fields(cls):
         return {
-            "books": many(BookObjectType, lambda *_: Query([]).select_from(Book)),
-            "author": single(AuthorObjectType, cls._author_query),
+            "books": many(BookJoinType, lambda *_: Query([]).select_from(Book)),
+            "author": single(AuthorJoinType, cls._author_query),
         }
     
     @classmethod
