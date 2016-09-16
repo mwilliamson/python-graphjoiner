@@ -1,12 +1,11 @@
 from datetime import datetime
 
-import pytest
-from hamcrest import assert_that, equal_to
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
 from graphjoiner import execute, single, many, ObjectType, RootObjectType
+from .execution_test_cases import ExecutionTestCases
 
 
 Base = declarative_base()
@@ -104,145 +103,19 @@ class Root(RootObjectType):
         return query
     
 
-def test_querying_list_of_entities(session):
-    query = """
-        {
-            books {
-                id
-                title
-            }
-        }
-    """
-    
-    result = execute(Root(session), query)
-    
-    assert_that(result, equal_to({
-        "books": [
-            {
-                "id": 1,
-                "title": "Leave It to Psmith",
-            },
-            {
-                "id": 2,
-                "title": "Right Ho, Jeeves",
-            },
-            {
-                "id": 3,
-                "title": "Catch-22",
-            },
-        ]
-    }))
-    
+class Tests(ExecutionTestCases):
+    def execute(self, query):
+        engine = create_engine("sqlite:///:memory:")
 
-def test_querying_list_of_entities_with_child_entity(session):
-    query = """
-        {
-            books {
-                id
-                author {
-                    name
-                }
-            }
-        }
-    """
-    
-    result = execute(Root(session), query)
-    
-    assert_that(result, equal_to({
-        "books": [
-            {
-                "id": 1,
-                "author": {
-                    "name": "PG Wodehouse",
-                },
-            },
-            {
-                "id": 2,
-                "author": {
-                    "name": "PG Wodehouse",
-                },
-            },
-            {
-                "id": 3,
-                "author": {
-                    "name": "Joseph Heller",
-                },
-            },
-        ]
-    }))
+        Base.metadata.create_all(engine)
 
-    
-def test_querying_single_entity_with_arg(session):
-    query = """
-        {
-            author(id: 1) {
-                name
-            }
-        }
-    """
-    
-    result = execute(Root(session), query)
-    
-    assert_that(result, equal_to({
-        "author": {
-            "name": "PG Wodehouse",
-        },
-    }))
+        session = Session(engine)
+        session.add(Author(name="PG Wodehouse"))
+        session.add(Author(name="Joseph Heller"))
+        session.add(Book(title="Leave It to Psmith", author_id=1))
+        session.add(Book(title="Right Ho, Jeeves", author_id=1))
+        session.add(Book(title="Catch-22", author_id=2))
 
-    
-def test_single_entity_is_null_if_not_found(session):
-    query = """
-        {
-            author(id: 100) {
-                name
-            }
-        }
-    """
-    
-    result = execute(Root(session), query)
-    
-    assert_that(result, equal_to({
-        "author": None,
-    }))
-
-
-    
-def test_querying_single_entity_with_child_entities(session):
-    query = """
-        {
-            author(id: 1) {
-                books {
-                    title
-                }
-            }
-        }
-    """
-    
-    result = execute(Root(session), query)
-    
-    assert_that(result, equal_to({
-        "author": {
-            "books": [
-                {"title": "Leave It to Psmith"},
-                {"title": "Right Ho, Jeeves"},
-            ],
-        },
-    }))
-
-
-@pytest.fixture
-def session():
-    engine = create_engine("sqlite:///:memory:")
-
-    Base.metadata.create_all(engine)
-
-    session = Session(engine)
-    session.add(Author(name="PG Wodehouse"))
-    session.add(Author(name="Joseph Heller"))
-    session.add(Book(title="Leave It to Psmith", author_id=1))
-    session.add(Book(title="Right Ho, Jeeves", author_id=1))
-    session.add(Book(title="Catch-22", author_id=2))
-
-    session.commit()
-    
-    return session
+        session.commit()
+        
+        return execute(Root(session), query)
