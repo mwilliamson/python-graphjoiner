@@ -43,19 +43,6 @@ class Field(object):
         )
 
 
-class RelationshipDefinition(object):
-    def __init__(self, entity_cls, **kwargs):
-        self._entity_cls = entity_cls
-        self._kwargs = kwargs
-
-    def instantiate(self, *args, **kwargs):
-        instantiated_types = kwargs["__instantiated_types"]
-        if self._entity_cls not in instantiated_types:
-            instantiated_types[self._entity_cls] = self._entity_cls(*args, **kwargs)
-            
-        return Relationship(instantiated_types[self._entity_cls], **self._kwargs)
-
-
 class Relationship(object):
     def __init__(self, target, process_results, wrap_type, generate_context, join=None, args=None):
         if join is None:
@@ -115,9 +102,12 @@ class RelationshipResults(object):
         return self._process_results(self._results.get(self._parent_join_values(key), []))
 
 
-def single(entity_cls, generate_context, **kwargs):
-    return RelationshipDefinition(
-        entity_cls=entity_cls,
+def single(target, generate_context, **kwargs):
+    return Relationship(
+        # TODO: Remove instantiation altogether
+        # We could probably make JoinType similar to the normal GraphQL types,
+        # with some nicer Graphene-like type on top
+        target=target._instantiate(),
         generate_context=generate_context,
         process_results=_one_or_none,
         wrap_type=lambda graphql_type: graphql_type,
@@ -134,9 +124,9 @@ def _one_or_none(values):
         return values[0]
 
 
-def many(entity_cls, generate_context, **kwargs):
-    return RelationshipDefinition(
-        entity_cls=entity_cls,
+def many(target, generate_context, **kwargs):
+    return Relationship(
+        target=target._instantiate(),
         generate_context=generate_context,
         process_results=lambda x: x,
         wrap_type=lambda graphql_type: GraphQLList(graphql_type),
@@ -145,21 +135,17 @@ def many(entity_cls, generate_context, **kwargs):
 
 
 class JoinType(Value):
-    def __init__(self, *args, **kwargs):
-        instantiated_types = kwargs.pop("__instantiated_types", {})
+    _instance = None
+    
+    @classmethod
+    def _instantiate(cls):
+        if cls._instance is None:
+            cls._instance = cls()
         
-        generate_fields = self.fields
-        self.fields = lambda: dict(
-            (field_name, self._instantiate_field(field, args, kwargs, instantiated_types))
-            for field_name, field in generate_fields().items()
-        )
+        return cls._instance
+    
+    def __init__(self):
         self._graphql_type = None
-
-    def _instantiate_field(self, field, args, kwargs, instantiated_types):
-        if isinstance(field, RelationshipDefinition):
-            return field.instantiate(*args, __instantiated_types=instantiated_types, **kwargs)
-        else:
-            return field
 
     @property
     def name(self):
