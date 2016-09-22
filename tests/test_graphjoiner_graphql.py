@@ -102,7 +102,7 @@ def root():
         
         author_id = request.args.get("id")
         if author_id is not None:
-            authors = list(filter(lambda author: author.id == int(author_id), authors))
+            authors = list(filter(lambda author: author.id == author_id, authors))
         
         return authors
     

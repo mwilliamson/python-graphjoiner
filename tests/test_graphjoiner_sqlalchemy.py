@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from graphql import GraphQLInt, GraphQLString
+from graphql import GraphQLInt, GraphQLString, GraphQLArgument
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
@@ -105,7 +105,7 @@ def root():
     def fields():
         return {
             "books": many(book_join_type, lambda *_: Query([]).select_from(Book)),
-            "author": single(author_join_type, author_query),
+            "author": single(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
         }
     
     def author_query(request, _):

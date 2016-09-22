@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from attr import attrs, attrib
-from graphql import GraphQLInt, GraphQLString
+from graphql import GraphQLInt, GraphQLString, GraphQLArgument
 
 from graphjoiner import execute, single, many, JoinType, RootJoinType, field
 from .execution_test_cases import ExecutionTestCases
@@ -94,7 +94,7 @@ def root():
     def fields():
         return {
             "books": many(book_join_type, lambda *_: all_books),
-            "author": single(author_join_type, author_query),
+            "author": single(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
         }
     
     def author_query(request, _):
@@ -102,7 +102,7 @@ def root():
         
         author_id = request.args.get("id")
         if author_id is not None:
-            authors = list(filter(lambda author: author.id == int(author_id), authors))
+            authors = list(filter(lambda author: author.id == author_id, authors))
         
         return authors
     

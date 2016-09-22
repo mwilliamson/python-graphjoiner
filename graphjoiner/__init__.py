@@ -33,6 +33,7 @@ def field(**kwargs):
 
 class Field(object):
     _target = None
+    args = {}
     
     def __init__(self, type, **kwargs):
         self.type = type
@@ -60,7 +61,7 @@ class Relationship(object):
         self._target = target
         self._select = select
         self._join = join
-        self._args = args
+        self.args = args
         self._process_results = process_results
         self._wrap_type = wrap_type
         
@@ -95,13 +96,13 @@ class Relationship(object):
             resolve = _resolve_fetched_field
         else:
             def resolve(source, args, context, info):
-                request = request_from_graphql_ast(info.field_asts[0], self._target, context=context)
+                request = request_from_graphql_ast(info.field_asts[0], self._target, context=context, field=self)
                 return self.fetch(request, None).get(())
                 
         return GraphQLField(
             type=self._wrap_type(self._target.to_graphql_type()),
             resolver=resolve,
-            args=self._args,
+            args=self.args,
         )
 
 
