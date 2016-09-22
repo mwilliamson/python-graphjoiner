@@ -159,9 +159,9 @@ class ExecutionTestCases(object):
         result = self.execute(query)
         
         assert_that(result, equal_to({
-                "wodehouse": {
-                    "name": "PG Wodehouse"
-                }
+            "wodehouse": {
+                "name": "PG Wodehouse"
+            }
         }))
     
     
@@ -180,12 +180,12 @@ class ExecutionTestCases(object):
         result = self.execute(query)
         
         assert_that(result, equal_to({
-                "wodehouse": {
-                    "name": "PG Wodehouse"
-                },
-                "heller": {
-                    "name": "Joseph Heller"
-                }
+            "wodehouse": {
+                "name": "PG Wodehouse"
+            },
+            "heller": {
+                "name": "Joseph Heller"
+            }
         }))
     
     
@@ -203,12 +203,12 @@ class ExecutionTestCases(object):
         result = self.execute(query)
         
         assert_that(result, equal_to({
-                "author": {
-                    "b": [
-                        {"title": "Leave It to Psmith"},
-                        {"title": "Right Ho, Jeeves"},
-                    ]
-                }
+            "author": {
+                "b": [
+                    {"title": "Leave It to Psmith"},
+                    {"title": "Right Ho, Jeeves"},
+                ]
+            }
         }))
     
     
@@ -226,12 +226,12 @@ class ExecutionTestCases(object):
         result = self.execute(query)
         
         assert_that(result, equal_to({
-                "author": {
-                    "books": [
-                        {"authorId": "Leave It to Psmith"},
-                        {"authorId": "Right Ho, Jeeves"},
-                    ]
-                }
+            "author": {
+                "books": [
+                    {"authorId": "Leave It to Psmith"},
+                    {"authorId": "Right Ho, Jeeves"},
+                ]
+            }
         }))
 
     
@@ -250,11 +250,11 @@ class ExecutionTestCases(object):
         result = self.execute(query)
         
         assert_that(result, equal_to({
-                "author": {
-                    "id": "PG Wodehouse",
-                    "books": [
-                        {"title": "Leave It to Psmith"},
-                        {"title": "Right Ho, Jeeves"},
-                    ]
-                }
+            "author": {
+                "id": "PG Wodehouse",
+                "books": [
+                    {"title": "Leave It to Psmith"},
+                    {"title": "Right Ho, Jeeves"},
+                ]
+            }
         }))
