@@ -168,7 +168,7 @@ class JoinType(Value):
         for selection in relationship_selections:
             children = fields[selection.field_name].fetch(selection, select)
             for result in results:
-                result[selection.field_name] = children.get(result)
+                result[selection.key] = children.get(result)
 
         return [
             Result(

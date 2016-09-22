@@ -145,3 +145,67 @@ class ExecutionTestCases(object):
             },
         }))
 
+
+    def test_top_level_relationship_field_aliases(self):
+        query = """
+            {
+                wodehouse: author(id: 1) {
+                    name
+                }
+            }
+        """
+        
+        result = self.execute(query)
+        
+        assert_that(result, equal_to({
+                "wodehouse": {
+                    "name": "PG Wodehouse"
+                }
+        }))
+    
+    
+    def test_can_alias_same_top_level_field_multiple_times_with_different_arguments(self):
+        query = """
+            {
+                wodehouse: author(id: 1) {
+                    name
+                }
+                heller: author(id: 2) {
+                    name
+                }
+            }
+        """
+        
+        result = self.execute(query)
+        
+        assert_that(result, equal_to({
+                "wodehouse": {
+                    "name": "PG Wodehouse"
+                },
+                "heller": {
+                    "name": "Joseph Heller"
+                }
+        }))
+    
+    
+    def test_nested_relationship_field_aliases(self):
+        query = """
+            {
+                author(id: 1) {
+                    b: books {
+                        title
+                    }
+                }
+            }
+        """
+        
+        result = self.execute(query)
+        
+        assert_that(result, equal_to({
+                "author": {
+                    "b": [
+                        {"title": "Leave It to Psmith"},
+                        {"title": "Right Ho, Jeeves"},
+                    ]
+                }
+        }))
