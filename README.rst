@@ -33,8 +33,8 @@ and one to get the authors of books in the comedy genre.
 Example
 -------
 
-Let's say we have some models defined by SQLAlchemy. A book has an ID, a title
-and an author ID. An author has an ID and a name.
+Let's say we have some models defined by SQLAlchemy. A book has an ID, a title,
+a genre and an author ID. An author has an ID and a name.
 
 .. code-block:: python
 
@@ -63,60 +63,75 @@ We then define object types for the root, books and authors:
 
     from graphql import GraphQLInt, GraphQLString
     from graphjoiner import JoinType, RootJoinType, single, many, field
+    from sqlalchemy.orm import Query
 
-    class Root(RootJoinType):
-        @classmethod
-        def fields(cls):
+    def create_root():
+        def fields():
             return {
-                "books": many(BookJoinType, cls._books_query)
+                "books": many(book_join_type, books_query)
             }
 
-        @classmethod
-        def _books_query(cls, request, _):
+        def books_query(request, _):
             query = Query([]).select_from(Book)
 
             if "genre" in request.args:
                 query = query.filter(Book.genre == request.args["genre"])
 
             return query
+        
+        return RootJoinType(name="Root", fields=fields)
+    
+    root = create_root()
 
-    class DatabaseJoinType(JoinType):
-        def fetch_immediates(self, request, query):
-            query = query.with_entities(*(
-                self.fields()[field].column_name
-                for field in request.requested_fields
-            ))
+    def fetch_immediates_from_database(fields, request, query):
+        query = query.with_entities(*(
+            fields[selection.field_name].column_name
+            for selection in request.selections
+        ))
+        keys = tuple(selection.key for selection in request.selections)
 
-            return [
-                dict(zip(request.requested_fields, row))
-                for row in query.with_session(self._session).all()
-            ]
+        return [
+            dict(zip(keys, row))
+            for row in query.with_session(request.context.session).all()
+        ]
 
-    class BookJoinType(DatabaseJoinType):
-        @classmethod
-        def fields(cls):
+    def create_book_join_type():
+        def fields():
             return {
                 "id": field(column_name="id", type=GraphQLInt),
                 "title": field(column_name="title", type=GraphQLString),
                 "genre": field(column_name="genre", type=GraphQLString),
                 "authorId": field(column_name="author_id", type=GraphQLInt),
-                "author": single(AuthorJoinType, cls._author_query, join={"authorId": "id"}),
+                "author": single(author_join_type, author_query, join={"authorId": "id"}),
             }
 
-        @classmethod
-        def _author_query(cls, request, book_query):
+        def author_query(request, book_query):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
+        
+        return JoinType(
+            name="Book",
+            fields=fields,
+            fetch_immediates=fetch_immediates_from_database,
+        )
+            
+    book_join_type = create_book_join_type()
 
-    class AuthorJoinType(DatabaseJoinType):
-        @classmethod
-        def fields(cls):
+    def create_author_join_type():
+        def fields():
             return {
                 "id": field(column_name="id", type=GraphQLInt),
                 "name": field(column_name="name", type=GraphQLString),
             }
+        
+        return JoinType(
+            name="Author",
+            fields=fields,
+            fetch_immediates=fetch_immediates_from_database,
+        )
+    author_join_type = create_author_join_type()
 
 We can execute the query by calling ``execute``:
 
@@ -134,7 +149,12 @@ We can execute the query by calling ``execute``:
             }
         }
     """
-    execute(Root(), query)
+    
+    class Context(object):
+        def __init__(self, session):
+            self.session = session
+
+    execute(root, query, context=Context(session))
 
 
 Which produces:
@@ -168,51 +188,59 @@ Let's break things down a little, starting with the definition of the root objec
 
 .. code-block:: python
 
-    class Root(RootJoinType):
-        @classmethod
-        def fields(cls):
+    def create_root():
+        def fields():
             return {
-                "books": many(BookJoinType, cls._books_query)
+                "books": many(book_join_type, books_query)
             }
 
-        @classmethod
-        def _books_query(cls, request, _):
+        def books_query(request, _):
             query = Query([]).select_from(Book)
 
             if "genre" in request.args:
                 query = query.filter(Book.genre == request.args["genre"])
 
             return query
+        
+        return RootJoinType(name="Root", fields=fields)
+    
+    root = create_root()
 
 For each object type, we need to define its fields.
 The root has only one field, ``books``, a one-to-many relationship,
 which we define using ``many()``.
-The first argument, ``BookJoinType``,
-is the object type we're defining a relationship to.
+The first argument, ``book_join_type``,
+is the type we're defining a relationship to.
 The second argument to describes how to create a query representing all of those
 related books: in this case all books, potentially filtered by a genre argument.
 
-This means we need to define ``BookJoinType``:
+This means we need to define ``book_join_type``:
 
 .. code-block:: python
 
-    class BookJoinType(DatabaseJoinType):
-        @classmethod
-        def fields(cls):
+    def create_book_join_type():
+        def fields():
             return {
                 "id": field(column_name="id", type=GraphQLInt),
                 "title": field(column_name="title", type=GraphQLString),
                 "genre": field(column_name="genre", type=GraphQLString),
                 "authorId": field(column_name="author_id", type=GraphQLInt),
-                "author": single(AuthorJoinType, cls._author_query, join={"authorId": "id"}),
+                "author": single(author_join_type, author_query, join={"authorId": "id"}),
             }
 
-        @classmethod
-        def _author_query(cls, request, book_query):
+        def author_query(request, book_query):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
+        
+        return JoinType(
+            name="Book",
+            fields=fields,
+            fetch_immediates=fetch_immediates_from_database,
+        )
+            
+    book_join_type = create_book_join_type()
 
 The ``author`` field is defined as a one-to-one mapping from book to author.
 As before, we define a function that generates a query for the requested authors.
@@ -225,47 +253,52 @@ join i.e. a cartesian product. Since there's always exactly one root instance,
 this is fine for relationships defined on the root.)
 
 The remaining fields define a mapping from the GraphQL field to the database
-column. This mapping is handled by the implementation of ``fetch_immediates()``
-in ``DatabaseJoinType``. The value of ``request.requested_fields`` in
-``fetch_immediates()`` is the fields that aren't defined as relationships
+column. This mapping is handled by ``fetch_immediates_from_database``.
+The value of ``request.selections`` in
+``fetch_immediates()`` is the selections of fields that aren't defined as relationships
 (using ``single`` or ``many``) that were either explicitly requested in the
 original GraphQL query, or are required as part of the join.
 
 .. code-block:: python
 
-    class DatabaseJoinType(JoinType):
-        def fetch_immediates(self, request, query):
-            fields = self.fields()
-            query = query.with_entities(*(
-                fields[field]
-                for field in request.requested_fields
-            ))
+    def fetch_immediates_from_database(fields, request, query):
+        query = query.with_entities(*(
+            fields[selection.field_name].column_name
+            for selection in request.selections
+        ))
+        keys = tuple(selection.key for selection in request.selections)
 
-            return [
-                dict(zip(request.requested_fields, row))
-                for row in query.all()
-            ]
+        return [
+            dict(zip(keys, row))
+            for row in query.with_session(request.context.session).all()
+        ]
 
-For completeness, we can tweak the definition of ``AuthorJoinType`` so
+For completeness, we can tweak the definition of ``author_join_type`` so
 we can request the books by an author:
 
 .. code-block:: python
 
-    class AuthorJoinType(DatabaseJoinType):
-        @classmethod
-        def fields(cls):
+    def create_author_join_type():
+        def fields():
             return {
                 "id": field(column_name="id", type=GraphQLInt),
                 "name": field(column_name="name", type=GraphQLString),
-                "author": many(BookJoinType, cls._book_query, join={"id": "authorId"}),
+                "author": many(book_join_type, book_query, join={"id": "authorId"}),
             }
-
-        @classmethod
-        def _book_query(cls, request, author_query):
+        
+        def book_query(request, author_query):
             authors = author_query.with_entities(Author.id).distinct().subquery()
             return Query([]) \
                 .select_from(Book) \
                 .join(authors, authors.c.id == Book.author_id)
+                
+        return JoinType(
+            name="Author",
+            fields=fields,
+            fetch_immediates=fetch_immediates_from_database,
+        )
+
+    author_join_type = create_author_join_type()
 
 Installation
 ------------
