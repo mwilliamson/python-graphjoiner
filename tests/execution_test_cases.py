@@ -71,6 +71,7 @@ class ExecutionTestCases(object):
 
         
     def test_querying_single_entity_with_arg(self):
+        # TODO: add test for non-top-level arg
         query = """
             {
                 author(id: 1) {
