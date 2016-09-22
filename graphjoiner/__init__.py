@@ -63,16 +63,26 @@ class Relationship(object):
         self._wrap_type = wrap_type
 
     @property
-    def parent_join_keys(self):
-        return self._join.keys()
+    def parent_join_selections(self):
+        return [
+            Request(field_name=parent_key, key="_graphjoiner_joinToChildrenKey_" + parent_key)
+            for parent_key in self._join.keys()
+        ]
 
     def fetch(self, request, select_parent):
         select = self._select(request, select_parent)
-        join_selections = [Request(key=child_key, field_name=child_key) for child_key in self._join.values()]
+        join_selections = [
+            Request(key="_graphjoiner_joinToParentKey_" + child_key, field_name=child_key)
+            for child_key in self._join.values()
+        ]
         child_request = assoc(request, join_selections=join_selections)
         results = self._target.fetch(child_request, select)
         key_func = lambda result: result.join_values
-        return RelationshipResults(results, self._process_results, self.parent_join_keys)
+        return RelationshipResults(
+            results=results,
+            process_results=self._process_results,
+            parent_join_keys=[selection.key for selection in self.parent_join_selections],
+        )
     
     def to_graphql_field(self):
         # TODO: differentiate between root and non-root types properly
@@ -152,9 +162,9 @@ class JoinType(Value):
         )
 
         join_to_children_selections = [
-            Request(key=key, field_name=key)
+            parent_join_selection
             for selection in relationship_selections
-            for key in fields[selection.field_name].parent_join_keys
+            for parent_join_selection in fields[selection.field_name].parent_join_selections
         ]
 
         immediate_selections = requested_immediate_selections + list(request.join_selections) + join_to_children_selections
@@ -173,7 +183,7 @@ class JoinType(Value):
         return [
             Result(
                 dict((selection.key, result[selection.key]) for selection in request.selections),
-                tuple(result[selection.field_name] for selection in request.join_selections),
+                tuple(result[selection.key] for selection in request.join_selections),
             )
             for result in results
         ]

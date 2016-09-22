@@ -209,3 +209,51 @@ class ExecutionTestCases(object):
                     ]
                 }
         }))
+    
+    
+    def test_field_alias_in_child_does_not_clash_with_join_fields(self):
+        query = """
+            {
+                author(id: 1) {
+                    books {
+                        authorId: title
+                    }
+                }
+            }
+        """
+        
+        result = self.execute(query)
+        
+        assert_that(result, equal_to({
+                "author": {
+                    "books": [
+                        {"authorId": "Leave It to Psmith"},
+                        {"authorId": "Right Ho, Jeeves"},
+                    ]
+                }
+        }))
+
+    
+    def test_field_alias_in_parent_does_not_clash_with_join_fields(self):
+        query = """
+            {
+                author(id: 1) {
+                    id: name
+                    books {
+                        title
+                    }
+                }
+            }
+        """
+        
+        result = self.execute(query)
+        
+        assert_that(result, equal_to({
+                "author": {
+                    "id": "PG Wodehouse",
+                    "books": [
+                        {"title": "Leave It to Psmith"},
+                        {"title": "Right Ho, Jeeves"},
+                    ]
+                }
+        }))
