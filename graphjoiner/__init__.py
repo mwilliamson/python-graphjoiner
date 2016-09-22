@@ -6,7 +6,7 @@ from graphql import GraphQLField, GraphQLObjectType, GraphQLList
 from graphql.language.parser import parse
 import six
 
-from .requests import request_from_graphql_ast, Request
+from .requests import request_from_graphql_ast, Request, field_key
 from .util import partition
 
 
@@ -45,7 +45,7 @@ class Field(object):
 
 
 def _resolve_fetched_field(source, args, context, info):
-    return source[info.field_name]
+    return source[field_key(info.field_asts[0])]
 
 
 class Relationship(object):
@@ -68,7 +68,7 @@ class Relationship(object):
 
     def fetch(self, request, select_parent):
         select = self._select(request, select_parent)
-        join_selections = [Request(field_name=child_key) for child_key in self._join.values()]
+        join_selections = [Request(key=child_key, field_name=child_key) for child_key in self._join.values()]
         child_request = assoc(request, join_selections=join_selections)
         results = self._target.fetch(child_request, select)
         key_func = lambda result: result.join_values
@@ -152,7 +152,7 @@ class JoinType(Value):
         )
 
         join_to_children_selections = [
-            Request(field_name=key)
+            Request(key=key, field_name=key)
             for selection in relationship_selections
             for key in fields[selection.field_name].parent_join_keys
         ]
@@ -172,7 +172,7 @@ class JoinType(Value):
 
         return [
             Result(
-                dict((selection.field_name, result[selection.field_name]) for selection in request.selections),
+                dict((selection.key, result[selection.key]) for selection in request.selections),
                 tuple(result[selection.field_name] for selection in request.join_selections),
             )
             for result in results

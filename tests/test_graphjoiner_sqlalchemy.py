@@ -37,7 +37,7 @@ def fetch_immediates_from_query(fields, request, query):
     ))
     
     return [
-        dict(zip((selection.field_name for selection in request.selections), row))
+        dict(zip((selection.key for selection in request.selections), row))
         for row in query.with_session(request.context.session).all()
     ]
 
