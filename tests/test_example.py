@@ -30,22 +30,28 @@ def test_example():
     session = Session(engine)
     session.add(Author(name="PG Wodehouse"))
     session.add(Author(name="Joseph Heller"))
+    session.add(Author(name="Jules Verne"))
     session.add(Book(title="Leave It to Psmith", author_id=1, genre="comedy"))
     session.add(Book(title="Right Ho, Jeeves", author_id=1, genre="comedy"))
     session.add(Book(title="Catch-22", author_id=2, genre="comedy"))
+    session.add(Book(title="Around the World in Eighty Days", author_id=3, genre="adventure"))
     
 
 
 
     
-    from graphql import GraphQLInt, GraphQLString
+    from graphql import GraphQLInt, GraphQLString, GraphQLArgument
     from graphjoiner import JoinType, RootJoinType, single, many, field
     from sqlalchemy.orm import Query
 
     def create_root():
         def fields():
             return {
-                "books": many(book_join_type, books_query)
+                "books": many(
+                    book_join_type,
+                    books_query,
+                    args={"genre": GraphQLArgument(type=GraphQLString)}
+                )
             }
 
         def books_query(request, _):

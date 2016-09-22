@@ -61,14 +61,18 @@ We then define object types for the root, books and authors:
 
 .. code-block:: python
 
-    from graphql import GraphQLInt, GraphQLString
+    from graphql import GraphQLInt, GraphQLString, GraphQLArgument
     from graphjoiner import JoinType, RootJoinType, single, many, field
     from sqlalchemy.orm import Query
 
     def create_root():
         def fields():
             return {
-                "books": many(book_join_type, books_query)
+                "books": many(
+                    book_join_type,
+                    books_query,
+                    args={"genre": GraphQLArgument(type=GraphQLString)}
+                )
             }
 
         def books_query(request, _):
@@ -191,7 +195,11 @@ Let's break things down a little, starting with the definition of the root objec
     def create_root():
         def fields():
             return {
-                "books": many(book_join_type, books_query)
+                "books": many(
+                    book_join_type,
+                    books_query,
+                    args={"genre": GraphQLArgument(type=GraphQLString)}
+                )
             }
 
         def books_query(request, _):
