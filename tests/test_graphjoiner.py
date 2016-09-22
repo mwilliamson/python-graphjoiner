@@ -34,8 +34,8 @@ all_books = [
 
 def fetch_immediates_from_obj(fields, request, objs):
     requested_fields = [
-        (field, fields[field].attr)
-        for field in request.requested_fields
+        (selection.field_name, fields[selection.field_name].attr)
+        for selection in request.selections
     ]
     
     def read_obj(obj):

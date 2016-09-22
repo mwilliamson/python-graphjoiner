@@ -6,7 +6,8 @@ from graphql import GraphQLField, GraphQLObjectType, GraphQLList
 from graphql.language.parser import parse
 import six
 
-from .requests import request_from_graphql_ast
+from .requests import request_from_graphql_ast, Request
+from .util import partition
 
 
 def execute(root_entity, query, context=None):
@@ -67,7 +68,8 @@ class Relationship(object):
 
     def fetch(self, request, select_parent):
         select = self._select(request, select_parent)
-        child_request = assoc(request, join_fields=self._join.values())
+        join_selections = [Request(field_name=child_key) for child_key in self._join.values()]
+        child_request = assoc(request, join_selections=join_selections)
         results = self._target.fetch(child_request, select)
         key_func = lambda result: result.join_values
         return RelationshipResults(results, self._process_results, self.parent_join_keys)
@@ -144,47 +146,34 @@ class JoinType(Value):
     def fetch(self, request, select):
         fields = self.fields()
 
-        requested_fields = request.children.keys()
-        requested_immediate_fields = [
-            field_name
-            for field_name in requested_fields
-            if not isinstance(fields[field_name], Relationship)
-        ]
-        requested_relationship_fields = [
-            field_name
-            for field_name in requested_fields
-            if isinstance(fields[field_name], Relationship)
+        (relationship_selections, requested_immediate_selections) = partition(
+            lambda selection: isinstance(fields[selection.field_name], Relationship),
+            request.selections,
+        )
+
+        join_to_children_selections = [
+            Request(field_name=key)
+            for selection in relationship_selections
+            for key in fields[selection.field_name].parent_join_keys
         ]
 
-        join_to_children_fields = [
-            join_field
-            for field_name in requested_relationship_fields
-            for join_field in fields[field_name].parent_join_keys
-        ]
-
-        fetch_fields = list(set(requested_immediate_fields + list(request.join_fields) + join_to_children_fields))
+        immediate_selections = requested_immediate_selections + list(request.join_selections) + join_to_children_selections
 
         results = self.fetch_immediates(
             fields,
-            assoc(
-                request,
-                children=dict((field, None) for field in fetch_fields),
-            ),
+            assoc(request, selections=immediate_selections),
             select,
         )
-
-        for field_name, field in fields.items():
-            if isinstance(field, Relationship):
-                field_request = request.children.get(field_name)
-                if field_request is not None:
-                    children = field.fetch(field_request, select)
-                    for result in results:
-                        result[field_name] = children.get(result)
+        
+        for selection in relationship_selections:
+            children = fields[selection.field_name].fetch(selection, select)
+            for result in results:
+                result[selection.field_name] = children.get(result)
 
         return [
             Result(
-                dict((field, result[field]) for field in requested_fields),
-                tuple(result[field] for field in request.join_fields),
+                dict((selection.field_name, result[selection.field_name]) for selection in request.selections),
+                tuple(result[selection.field_name] for selection in request.join_selections),
             )
             for result in results
         ]

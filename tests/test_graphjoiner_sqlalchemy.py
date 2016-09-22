@@ -32,12 +32,12 @@ class QueryContext(object):
 
 def fetch_immediates_from_query(fields, request, query):
     query = query.with_entities(*(
-        fields[field].column_name
-        for field in request.requested_fields
+        fields[selection.field_name].column_name
+        for selection in request.selections
     ))
     
     return [
-        dict(zip(request.requested_fields, row))
+        dict(zip((selection.field_name for selection in request.selections), row))
         for row in query.with_session(request.context.session).all()
     ]
 

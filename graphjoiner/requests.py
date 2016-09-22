@@ -1,34 +1,38 @@
 from attr import attrs, attrib
+from graphql.language import ast as ast_types
 
 
 @attrs
 class Request(object):
-    args = attrib()
-    children = attrib()
-    join_fields = attrib(default=[])
+    field_name = attrib()
+    args = attrib(default={})
+    selections = attrib(default=[])
+    join_selections = attrib(default=[])
     context = attrib(default=None)
-
-    @property
-    def requested_fields(self):
-        return self.children.keys()
 
 
 def request_from_graphql_ast(ast, context):
+    if isinstance(ast, ast_types.Field):
+        field_name = ast.name.value
+    else:
+        field_name = None
+    
     args = dict(
         (argument.name.value, argument.value.value)
         for argument in getattr(ast, "arguments", {})
     )
     
-    children = _graphql_children(ast, context=context)
-        
+    selections = _graphql_selections(ast, context=context)
+
     return Request(
+        field_name=field_name,
         args=args,
-        children=children,
+        selections=selections,
         context=context,
     )
     
-def _graphql_children(ast, context):
-    return dict(
-        (selection.name.value, request_from_graphql_ast(selection, context=context))
+def _graphql_selections(ast, context):
+    return [
+        request_from_graphql_ast(selection, context=context)
         for selection in (ast.selection_set.selections if ast.selection_set else [])
-    )
+    ]
