@@ -107,10 +107,7 @@ class RelationshipResults(object):
 
 def single(target, select, **kwargs):
     return Relationship(
-        # TODO: Remove instantiation altogether
-        # We could probably make JoinType similar to the normal GraphQL types,
-        # with some nicer Graphene-like type on top
-        target=target._instantiate(),
+        target=target,
         select=select,
         process_results=_one_or_none,
         wrap_type=lambda graphql_type: graphql_type,
@@ -129,7 +126,7 @@ def _one_or_none(values):
 
 def many(target, select, **kwargs):
     return Relationship(
-        target=target._instantiate(),
+        target=target,
         select=select,
         process_results=lambda x: x,
         wrap_type=lambda graphql_type: GraphQLList(graphql_type),
@@ -138,25 +135,11 @@ def many(target, select, **kwargs):
 
 
 class JoinType(Value):
-    _instance = None
-    
-    @classmethod
-    def _instantiate(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        
-        return cls._instance
-    
-    def __init__(self):
+    def __init__(self, name, fetch_immediates, fields):
+        self.name = name
+        self.fetch_immediates = fetch_immediates
+        self.fields = fields
         self._graphql_type = None
-
-    @property
-    def name(self):
-        return type(self).__name__
-
-    @abc.abstractmethod
-    def fetch_immediates(self, request, select):
-        pass
 
     def fetch(self, request, select):
         fields = self.fields()
@@ -182,6 +165,7 @@ class JoinType(Value):
         fetch_fields = list(set(requested_immediate_fields + list(request.join_fields) + join_to_children_fields))
 
         results = self.fetch_immediates(
+            fields,
             assoc(
                 request,
                 children=dict((field, None) for field in fetch_fields),
@@ -218,6 +202,5 @@ class JoinType(Value):
         return self._graphql_type
 
 
-class RootJoinType(JoinType):
-    def fetch_immediates(self, request, select):
-        return [{}]
+def RootJoinType(**kwargs):
+    return JoinType(fetch_immediates=lambda *_: [{}], **kwargs)

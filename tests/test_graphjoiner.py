@@ -32,58 +32,72 @@ all_books = [
 ]
 
 
-class ObjJoinType(JoinType):
-    def fetch_immediates(self, request, objs):
-        requested_fields = [
-            (field, self.fields()[field].attr)
-            for field in request.requested_fields
-        ]
-        
-        def read_obj(obj):
-            return dict((key, getattr(obj, attr)) for (key, attr) in requested_fields)
-        
-        return list(map(read_obj, objs))
+def fetch_immediates_from_obj(fields, request, objs):
+    requested_fields = [
+        (field, fields[field].attr)
+        for field in request.requested_fields
+    ]
+    
+    def read_obj(obj):
+        return dict((key, getattr(obj, attr)) for (key, attr) in requested_fields)
+    
+    return list(map(read_obj, objs))
 
 
-class AuthorJoinType(ObjJoinType):
-    @staticmethod
+def evaluate(func):
+    return func()
+
+
+@evaluate
+def author_join_type():
     def fields():
         return {
             "id": field(attr="id", type=GraphQLInt),
             "name": field(attr="name", type=GraphQLString),
             "books": many(
-                BookJoinType,
+                book_join_type,
                 lambda *_: all_books,
                 join={"id": "authorId"},
             ),
         }
+    
+    return JoinType(
+        name="Author",
+        fields=fields,
+        fetch_immediates=fetch_immediates_from_obj,
+    )
 
 
-class BookJoinType(ObjJoinType):
-    @staticmethod
+@evaluate
+def book_join_type():
     def fields():
         return {
             "id": field(attr="id", type=GraphQLInt),
             "title": field(attr="title", type=GraphQLString),
             "authorId": field(attr="author_id", type=GraphQLInt),
             "author": single(
-                AuthorJoinType,
+                author_join_type,
                 lambda *_: all_authors,
                 join={"authorId": "id"},
             ),
         }
+    
+    return JoinType(
+        name="Book",
+        fields=fields,
+        fetch_immediates=fetch_immediates_from_obj,
+    )
 
 
-class Root(RootJoinType):
-    @classmethod
-    def fields(cls):
+@evaluate
+def root():
+    def fields():
         return {
-            "books": many(BookJoinType, lambda *_: all_books),
-            "author": single(AuthorJoinType, cls._author_query),
+            "books": many(book_join_type, lambda *_: all_books),
+            "author": single(author_join_type, author_query),
         }
     
-    @classmethod
-    def _author_query(cls, request, _):
+    def author_query(request, _):
         authors = all_authors
         
         author_id = request.args.get("id")
@@ -91,8 +105,13 @@ class Root(RootJoinType):
             authors = list(filter(lambda author: author.id == int(author_id), authors))
         
         return authors
+    
+    return RootJoinType(
+        name="Root",
+        fields=fields,
+    )
 
 
 class TestGraphJoiner(ExecutionTestCases):
     def execute(self, query):
-        return execute(Root(), query)
+        return execute(root, query)

@@ -30,72 +30,84 @@ class QueryContext(object):
         self.session = session
 
 
-class DatabaseJoinType(JoinType):
-    def fetch_immediates(self, request, query):
-        query = query.with_entities(*(
-            self.fields()[field].column_name
-            for field in request.requested_fields
-        ))
-        
-        return [
-            dict(zip(request.requested_fields, row))
-            for row in query.with_session(request.context.session).all()
-        ]
-        
-        
-class AuthorJoinType(DatabaseJoinType):
-    @classmethod
-    def fields(cls):
+def fetch_immediates_from_query(fields, request, query):
+    query = query.with_entities(*(
+        fields[field].column_name
+        for field in request.requested_fields
+    ))
+    
+    return [
+        dict(zip(request.requested_fields, row))
+        for row in query.with_session(request.context.session).all()
+    ]
+
+
+def evaluate(func):
+    return func()
+    
+
+@evaluate
+def author_join_type():
+    def fields():
         return {
             "id": field(column_name="id", type=GraphQLInt),
             "name": field(column_name="name", type=GraphQLString),
             "books": many(
-                BookJoinType,
-                cls._book_query,
+                book_join_type,
+                book_query,
                 join={"id": "authorId"},
             ),
         }
 
-    @classmethod
-    def _book_query(cls, request, author_query):
+    def book_query(request, author_query):
         authors = author_query.with_entities(Author.id).distinct().subquery()
         return Query([]) \
             .select_from(Book) \
             .join(authors, authors.c.id == Book.author_id)
+    
+    return JoinType(
+        name="Author",
+        fields=fields,
+        fetch_immediates=fetch_immediates_from_query,
+    )
 
 
-class BookJoinType(DatabaseJoinType):
-    @classmethod
-    def fields(cls):
+@evaluate
+def book_join_type():
+    def fields():
         return {
             "id": field(column_name="id", type=GraphQLInt),
             "title": field(column_name="title", type=GraphQLString),
             "authorId": field(column_name="author_id", type=GraphQLInt),
             "author": single(
-                AuthorJoinType,
-                cls._author_query,
+                author_join_type,
+                author_query,
                 join={"authorId": "id"},
             ),
         }
     
-    @classmethod
-    def _author_query(cls, request, book_query):
+    def author_query(request, book_query):
         books = book_query.with_entities(Book.author_id).distinct().subquery()
         return Query([]) \
             .select_from(Author) \
             .join(books, books.c.author_id == Author.id)
     
+    return JoinType(
+        name="Book",
+        fields=fields,
+        fetch_immediates=fetch_immediates_from_query,
+    )
+    
 
-class Root(RootJoinType):
-    @classmethod
-    def fields(cls):
+@evaluate
+def root():
+    def fields():
         return {
-            "books": many(BookJoinType, lambda *_: Query([]).select_from(Book)),
-            "author": single(AuthorJoinType, cls._author_query),
+            "books": many(book_join_type, lambda *_: Query([]).select_from(Book)),
+            "author": single(author_join_type, author_query),
         }
     
-    @classmethod
-    def _author_query(cls, request, _):
+    def author_query(request, _):
         query = Query([]).select_from(Author)
         
         author_id = request.args.get("id")
@@ -103,6 +115,11 @@ class Root(RootJoinType):
             query = query.filter(Author.id == author_id)
         
         return query
+    
+    return RootJoinType(
+        name="Root",
+        fields=fields,
+    )
     
 
 class TestGraphJoinerSqlAlchemy(ExecutionTestCases):
@@ -120,4 +137,4 @@ class TestGraphJoinerSqlAlchemy(ExecutionTestCases):
 
         session.commit()
         
-        return execute(Root(), query, context=QueryContext(session))
+        return execute(root, query, context=QueryContext(session))
