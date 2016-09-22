@@ -60,9 +60,9 @@ def test_example():
     
     root = create_root()
 
-    def fetch_immediates_from_database(fields, request, query):
+    def fetch_immediates_from_database(request, query):
         query = query.with_entities(*(
-            fields[selection.field_name].column_name
+            selection.field.column_name
             for selection in request.selections
         ))
         keys = tuple(selection.key for selection in request.selections)

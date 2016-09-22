@@ -10,9 +10,9 @@ from .requests import request_from_graphql_ast, Request, field_key
 from .util import partition
 
 
-def execute(root_entity, query, context=None):
-    request = request_from_graphql_ast(parse(query).definitions[0], context=context)
-    return root_entity.fetch(request, None)[0].value
+def execute(root, query, context=None):
+    request = request_from_graphql_ast(parse(query).definitions[0], root, context=context)
+    return root.fetch(request, None)[0].value
 
 
 class Result(object):
@@ -32,6 +32,8 @@ def field(**kwargs):
 
 
 class Field(object):
+    _target = None
+    
     def __init__(self, type, **kwargs):
         self.type = type
         for key, value in six.iteritems(kwargs):
@@ -61,18 +63,21 @@ class Relationship(object):
         self._args = args
         self._process_results = process_results
         self._wrap_type = wrap_type
+        
+        self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self._join.keys())
 
-    @property
-    def parent_join_selections(self):
+    def parent_join_selections(self, parent):
+        fields = parent.fields()
         return [
-            Request(field_name=parent_key, key="_graphjoiner_joinToChildrenKey_" + parent_key)
-            for parent_key in self._join.keys()
+            Request(field=fields[field_name], key=key)
+            for field_name, key in zip(self._join.keys(), self._parent_join_keys)
         ]
 
     def fetch(self, request, select_parent):
         select = self._select(request, select_parent)
+        fields = self._target.fields()
         join_selections = [
-            Request(key="_graphjoiner_joinToParentKey_" + child_key, field_name=child_key)
+            Request(key="_graphjoiner_joinToParentKey_" + child_key, field=fields[child_key])
             for child_key in self._join.values()
         ]
         child_request = assoc(request, join_selections=join_selections)
@@ -81,7 +86,7 @@ class Relationship(object):
         return RelationshipResults(
             results=results,
             process_results=self._process_results,
-            parent_join_keys=[selection.key for selection in self.parent_join_selections],
+            parent_join_keys=self._parent_join_keys,
         )
     
     def to_graphql_field(self):
@@ -90,7 +95,7 @@ class Relationship(object):
             resolve = _resolve_fetched_field
         else:
             def resolve(source, args, context, info):
-                request = request_from_graphql_ast(info.field_asts[0], context=context)
+                request = request_from_graphql_ast(info.field_asts[0], self._target, context=context)
                 return self.fetch(request, None).get(())
                 
         return GraphQLField(
@@ -157,26 +162,25 @@ class JoinType(Value):
         fields = self.fields()
 
         (relationship_selections, requested_immediate_selections) = partition(
-            lambda selection: isinstance(fields[selection.field_name], Relationship),
+            lambda selection: isinstance(selection.field, Relationship),
             request.selections,
         )
 
         join_to_children_selections = [
             parent_join_selection
             for selection in relationship_selections
-            for parent_join_selection in fields[selection.field_name].parent_join_selections
+            for parent_join_selection in selection.field.parent_join_selections(self)
         ]
 
         immediate_selections = requested_immediate_selections + list(request.join_selections) + join_to_children_selections
 
         results = self.fetch_immediates(
-            fields,
             assoc(request, selections=immediate_selections),
             select,
         )
         
         for selection in relationship_selections:
-            children = fields[selection.field_name].fetch(selection, select)
+            children = selection.field.fetch(selection, select)
             for result in results:
                 result[selection.key] = children.get(result)
 

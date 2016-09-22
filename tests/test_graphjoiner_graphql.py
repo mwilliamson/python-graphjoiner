@@ -32,9 +32,9 @@ all_books = [
 ]
 
 
-def fetch_immediates_from_obj(fields, request, objs):
+def fetch_immediates_from_obj(request, objs):
     requested_fields = [
-        (selection.key, fields[selection.field_name].attr)
+        (selection.key, selection.field.attr)
         for selection in request.selections
     ]
     

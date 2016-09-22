@@ -5,19 +5,17 @@ from graphql.language import ast as ast_types
 @attrs
 class Request(object):
     key = attrib()
-    field_name = attrib()
+    field = attrib()
     args = attrib(default={})
     selections = attrib(default=[])
     join_selections = attrib(default=[])
     context = attrib(default=None)
 
 
-def request_from_graphql_ast(ast, context):
+def request_from_graphql_ast(ast, root, context, field=None):
     if isinstance(ast, ast_types.Field):
-        field_name = _field_name(ast)
         key = field_key(ast)
     else:
-        field_name = None
         key = None
     
     args = dict(
@@ -25,11 +23,11 @@ def request_from_graphql_ast(ast, context):
         for argument in getattr(ast, "arguments", {})
     )
     
-    selections = _graphql_selections(ast, context=context)
+    selections = _graphql_selections(ast, root, context=context)
 
     return Request(
         key=key,
-        field_name=field_name,
+        field=field,
         args=args,
         selections=selections,
         context=context,
@@ -48,8 +46,22 @@ def field_key(ast):
 
 
     
-def _graphql_selections(ast, context):
-    return [
-        request_from_graphql_ast(selection, context=context)
-        for selection in (ast.selection_set.selections if ast.selection_set else [])
-    ]
+def _graphql_selections(ast, root, context):
+    if ast.selection_set:
+        fields = root.fields()
+        return [
+            _request_from_selection(selection, context=context, field=fields[_field_name(selection)])
+            for selection in ast.selection_set.selections
+        ]
+    else:
+        return []
+
+
+def _request_from_selection(selection, field, context):
+    return request_from_graphql_ast(
+        selection,
+        context=context,
+        field=field,
+        root=field._target,
+    )
+    
