@@ -59,6 +59,12 @@ def author_join_type():
                 lambda *_: all_books,
                 join={"id": "authorId"},
             ),
+            "bookTitles": many(
+                book_join_type,
+                lambda *_: all_books,
+                join={"id": "authorId"},
+                scalar="title",
+            )
         }
     
     return JoinType(

@@ -52,7 +52,7 @@ def _resolve_fetched_field(source, args, context, info):
 
 
 class Relationship(object):
-    def __init__(self, target, process_results, wrap_type, select, join=None, args=None):
+    def __init__(self, target, process_results, wrap_type, select, join=None, args=None, scalar=None):
         if join is None:
             join = {}
         if args is None:
@@ -62,6 +62,7 @@ class Relationship(object):
         self._select = select
         self._join = join
         self.args = args
+        self._scalar = scalar
         self._process_results = process_results
         self._wrap_type = wrap_type
         
@@ -81,13 +82,19 @@ class Relationship(object):
             Request(key="_graphjoiner_joinToParentKey_" + child_key, field=fields[child_key])
             for child_key in self._join.values()
         ]
-        child_request = assoc(request, join_selections=join_selections)
+        if self._scalar is None:
+            selections = request.selections
+        else:
+            selections = [Request(key=self._scalar, field=fields[self._scalar])]
+        
+        child_request = assoc(request, join_selections=join_selections, selections=selections)
         results = self._target.fetch(child_request, select)
         key_func = lambda result: result.join_values
         return RelationshipResults(
             results=results,
             process_results=self._process_results,
             parent_join_keys=self._parent_join_keys,
+            scalar=self._scalar,
         )
     
     def to_graphql_field(self):
@@ -98,23 +105,36 @@ class Relationship(object):
             def resolve(source, args, context, info):
                 request = request_from_graphql_ast(info.field_asts[0], self._target, context=context, field=self)
                 return self.fetch(request, None).get(())
-                
+        
+        if self._scalar is None:
+            target = self._target.to_graphql_type()
+        else:
+            target = self._target.fields()[self._scalar].to_graphql_field().type
+        
         return GraphQLField(
-            type=self._wrap_type(self._target.to_graphql_type()),
+            type=self._wrap_type(target),
             resolver=resolve,
             args=self.args,
         )
 
 
 class RelationshipResults(object):
-    def __init__(self, results, process_results, parent_join_keys):
+    def __init__(self, results, process_results, parent_join_keys, scalar):
         key_func = lambda result: result.join_values
         self._results = dict(
-            (key, [result.value for result in results])
+            (key, [self._result_value(result, scalar) for result in results])
             for key, results in groupby(sorted(results, key=key_func), key=key_func)
         )
         self._process_results = process_results
         self._parent_join_keys = parent_join_keys
+    
+    @staticmethod
+    def _result_value(result, scalar):
+        value = result.value
+        if scalar is None:
+            return value
+        else:
+            return value[scalar]
     
     def _parent_join_values(self, parent):
         return tuple(parent[join_field] for join_field in self._parent_join_keys)

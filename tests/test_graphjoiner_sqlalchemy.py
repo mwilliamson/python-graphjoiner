@@ -58,6 +58,12 @@ def author_join_type():
                 book_query,
                 join={"id": "authorId"},
             ),
+            "bookTitles": many(
+                book_join_type,
+                book_query,
+                join={"id": "authorId"},
+                scalar="title",
+            )
         }
 
     def book_query(request, author_query):

@@ -127,6 +127,27 @@ class ExecutionTestCases(object):
                 ],
             },
         }))
+        
+
+    def test_querying_scalar_list(self):
+        query = """
+            {
+                author(id: 1) {
+                    bookTitles
+                }
+            }
+        """
+        
+        result = self.execute(query)
+        
+        assert_that(result, equal_to({
+            "author": {
+                "bookTitles": [
+                    "Leave It to Psmith",
+                    "Right Ho, Jeeves",
+                ],
+            },
+        }))
     
     
     def test_scalar_field_aliases(self):
