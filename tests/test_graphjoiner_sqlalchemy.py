@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
-from graphjoiner import execute, single, many, JoinType, RootJoinType, field
+from graphjoiner import execute, single, many, extract, JoinType, RootJoinType, field
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -59,11 +59,10 @@ def author_join_type():
                 join={"id": "authorId"},
             ),
             "bookTitles": many(
-                book_join_type,
+                extract(book_join_type, "title"),
                 book_query,
                 join={"id": "authorId"},
-                scalar="title",
-            )
+            ),
         }
 
     def book_query(request, author_query):

@@ -3,7 +3,7 @@ from datetime import datetime
 from attr import attrs, attrib
 from graphql import GraphQLInt, GraphQLString, GraphQLArgument
 
-from graphjoiner import execute, single, many, JoinType, RootJoinType, field
+from graphjoiner import execute, single, many, extract, JoinType, RootJoinType, field
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -60,11 +60,10 @@ def author_join_type():
                 join={"id": "authorId"},
             ),
             "bookTitles": many(
-                book_join_type,
+                extract(book_join_type, "title"),
                 lambda *_: all_books,
                 join={"id": "authorId"},
-                scalar="title",
-            )
+            ),
         }
     
     return JoinType(
