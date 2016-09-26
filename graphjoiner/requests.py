@@ -15,7 +15,7 @@ class Request(object):
     context = attrib(default=None)
 
 
-def request_from_graphql_ast(ast, root, context, field=None):
+def request_from_graphql_ast(ast, root, context, variables, field=None):
     if isinstance(ast, ast_types.Field):
         key = field_key(ast)
     else:
@@ -33,9 +33,9 @@ def request_from_graphql_ast(ast, root, context, field=None):
             )
             for arg_name, arg in six.iteritems(field.args)
         ]
-        args = get_argument_values(arg_definitions, getattr(ast, "arguments", []), variables={})
+        args = get_argument_values(arg_definitions, getattr(ast, "arguments", []), variables=variables)
     
-    selections = _graphql_selections(ast, root, context=context)
+    selections = _graphql_selections(ast, root, context=context, variables=variables)
 
     return Request(
         key=key,
@@ -58,21 +58,22 @@ def field_key(ast):
 
 
     
-def _graphql_selections(ast, root, context):
+def _graphql_selections(ast, root, context, variables):
     if ast.selection_set:
         fields = root.fields()
         return [
-            _request_from_selection(selection, context=context, field=fields[_field_name(selection)])
+            _request_from_selection(selection, context=context, variables=variables, field=fields[_field_name(selection)])
             for selection in ast.selection_set.selections
         ]
     else:
         return []
 
 
-def _request_from_selection(selection, field, context):
+def _request_from_selection(selection, field, context, variables):
     return request_from_graphql_ast(
         selection,
         context=context,
+        variables=variables,
         field=field,
         root=field._target,
     )

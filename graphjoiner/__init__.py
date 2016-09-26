@@ -10,8 +10,8 @@ from .requests import request_from_graphql_ast, Request, field_key
 from .util import partition
 
 
-def execute(root, query, context=None):
-    request = request_from_graphql_ast(parse(query).definitions[0], root, context=context)
+def execute(root, query, context=None, variables=None):
+    request = request_from_graphql_ast(parse(query).definitions[0], root, context=context, variables=variables)
     return root.fetch(request, None)[0].value
 
 
@@ -102,7 +102,7 @@ class Relationship(object):
             resolve = _resolve_fetched_field
         else:
             def resolve(source, args, context, info):
-                request = request_from_graphql_ast(info.field_asts[0], self._target, context=context, field=self)
+                request = request_from_graphql_ast(info.field_asts[0], self._target, context=context, variables=info.variable_values, field=self)
                 return self.fetch(request, None).get(())
         
         return GraphQLField(

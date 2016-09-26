@@ -128,12 +128,12 @@ def root():
 
 
 class TestGraphJoiner(ExecutionTestCases):
-    def execute(self, query):
+    def execute(self, query, variables=None):
         schema = GraphQLSchema(
             query=root.to_graphql_type(),
         )
         
-        result = graphql(schema, query)
+        result = graphql(schema, query, variable_values=variables)
         
         assert not result.errors
         return result.data

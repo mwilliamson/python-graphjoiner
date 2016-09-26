@@ -143,7 +143,7 @@ def root():
     
 
 class TestGraphJoinerSqlAlchemy(ExecutionTestCases):
-    def execute(self, query):
+    def execute(self, query, **kwargs):
         engine = create_engine("sqlite:///:memory:")
 
         Base.metadata.create_all(engine)
@@ -157,4 +157,4 @@ class TestGraphJoinerSqlAlchemy(ExecutionTestCases):
 
         session.commit()
         
-        return execute(root, query, context=QueryContext(session))
+        return execute(root, query, context=QueryContext(session), **kwargs)

@@ -129,5 +129,5 @@ def root():
 
 
 class TestGraphJoiner(ExecutionTestCases):
-    def execute(self, query):
-        return execute(root, query)
+    def execute(self, query, **kwargs):
+        return execute(root, query, **kwargs)

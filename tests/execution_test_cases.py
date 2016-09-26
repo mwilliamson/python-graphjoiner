@@ -302,3 +302,28 @@ class ExecutionTestCases(object):
                 ]
             }
         }))
+
+    
+    def test_variable_can_be_used_in_top_level_argument(self):
+        query = """
+            query getAuthor($authorId: Int) {
+                author(id: $authorId) {
+                    id: name
+                    books {
+                        title
+                    }
+                }
+            }
+        """
+        
+        result = self.execute(query, variables={"authorId": 1})
+        
+        assert_that(result, equal_to({
+            "author": {
+                "id": "PG Wodehouse",
+                "books": [
+                    {"title": "Leave It to Psmith"},
+                    {"title": "Right Ho, Jeeves"},
+                ]
+            }
+        }))
