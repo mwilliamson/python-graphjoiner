@@ -82,15 +82,18 @@ def author_join_type():
 @evaluate
 def book_join_type():
     def fields():
+        author = single(
+            author_join_type,
+            author_query,
+            join={"authorId": "id"},
+        )
+        
         return {
             "id": field(column_name="id", type=GraphQLInt),
             "title": field(column_name="title", type=GraphQLString),
             "authorId": field(column_name="author_id", type=GraphQLInt),
-            "author": single(
-                author_join_type,
-                author_query,
-                join={"authorId": "id"},
-            ),
+            "author": author,
+            "booksBySameAuthor": extract(author, "books"),
         }
     
     def author_query(request, book_query):
@@ -111,8 +114,18 @@ def root():
     def fields():
         return {
             "books": many(book_join_type, lambda *_: Query([]).select_from(Book)),
+            "book": single(book_join_type, book_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
             "author": single(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
         }
+    
+    def book_query(request, _):
+        query = Query([]).select_from(Book)
+        
+        book_id = request.args.get("id")
+        if book_id is not None:
+            query = query.filter(Book.id == book_id)
+        
+        return query
     
     def author_query(request, _):
         query = Query([]).select_from(Author)

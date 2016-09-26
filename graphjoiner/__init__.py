@@ -81,8 +81,9 @@ class Relationship(object):
     def fetch(self, request, select_parent):
         select = self._select(request, select_parent)
         fields = self._target.fields()
+        join_fields = self._target.join_fields()
         join_selections = [
-            Request(key="_graphjoiner_joinToParentKey_" + child_key, field=fields[child_key])
+            Request(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
             for child_key in self._join.values()
         ]
         
@@ -174,14 +175,23 @@ class ScalarJoinType(Value):
     def __init__(self, target, field_name):
         self._target = target
         self._field_name = field_name
-        self._fields = target.fields()
-        self._field = self._fields[field_name]
+    
+    @property
+    def _field(self):
+        return self._target.fields()[self._field_name]
     
     def fields(self):
-        return self._fields
+        if isinstance(self._field, Relationship):
+            return self._field._target.fields()
+        else:
+            return {}
+    
+    def join_fields(self):
+        return self._target.join_fields()
     
     def fetch(self, request, select):
-        results = self._target.fetch(assoc(request, selections=[Request(key=self._field_name, field=self._field)]), select)
+        field_request = Request(key=self._field_name, field=self._field, selections=request.selections, context=request.context)
+        results = self._target.fetch(assoc(request, selections=[field_request]), select)
         return [
             Result(value=result.value[self._field_name], join_values=result.join_values)
             for result in results
@@ -195,8 +205,17 @@ class JoinType(Value):
     def __init__(self, name, fetch_immediates, fields):
         self.name = name
         self.fetch_immediates = fetch_immediates
-        self.fields = fields
+        self._generate_fields = fields
+        self._fields = None
         self._graphql_type = None
+
+    def fields(self):
+        if self._fields is None:
+            self._fields = self._generate_fields()
+        return self._fields
+    
+    def join_fields(self):
+        return self.fields()
 
     def fetch(self, request, select):
         fields = self.fields()
