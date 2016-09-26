@@ -30,17 +30,20 @@ class QueryContext(object):
         self.session = session
 
 
-def fetch_immediates_from_query(request, query):
-    query = query.with_entities(*(
-        selection.field.column_name
-        for selection in request.selections
-    ))
-    keys = tuple(selection.key for selection in request.selections)
+def fetch_immediates_from_query(model):
+    def fetch_immediates_from_query(request, query):
+        query = query.with_entities(*(
+            getattr(model, selection.field.column_name)
+            for selection in request.selections
+        ))
+        keys = tuple(selection.key for selection in request.selections)
+        
+        return [
+            dict(zip(keys, row))
+            for row in query.with_session(request.context.session).all()
+        ]
     
-    return [
-        dict(zip(keys, row))
-        for row in query.with_session(request.context.session).all()
-    ]
+    return fetch_immediates_from_query
 
 
 def evaluate(func):
@@ -72,7 +75,7 @@ def author_join_type():
     return JoinType(
         name="Author",
         fields=fields,
-        fetch_immediates=fetch_immediates_from_query,
+        fetch_immediates=fetch_immediates_from_query(Author),
     )
 
 
@@ -99,7 +102,7 @@ def book_join_type():
     return JoinType(
         name="Book",
         fields=fields,
-        fetch_immediates=fetch_immediates_from_query,
+        fetch_immediates=fetch_immediates_from_query(Book),
     )
     
 
