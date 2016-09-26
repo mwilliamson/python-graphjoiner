@@ -51,13 +51,17 @@ def _resolve_fetched_field(source, args, context, info):
     return source[field_key(info.field_asts[0])]
 
 
-class Relationship(object):
-    def __init__(self, target, process_results, wrap_type, select, join=None, args=None):
-        if join is None:
-            join = {}
-        if args is None:
-            args = {}
+def relationship(join=None, args=None, **kwargs):
+    if join is None:
+        join = {}
+    if args is None:
+        args = {}
+    
+    return Relationship(join=join, args=args, **kwargs)
 
+
+class Relationship(object):
+    def __init__(self, target, process_results, wrap_type, select, join, args):
         self._target = target
         self._select = select
         self._join = join
@@ -125,7 +129,7 @@ class RelationshipResults(object):
 
 
 def single(target, select, **kwargs):
-    return Relationship(
+    return relationship(
         target=target,
         select=select,
         process_results=_one_or_none,
@@ -144,7 +148,7 @@ def _one_or_none(values):
 
 
 def many(target, select, **kwargs):
-    return Relationship(
+    return relationship(
         target=target,
         select=select,
         process_results=lambda x: x,
