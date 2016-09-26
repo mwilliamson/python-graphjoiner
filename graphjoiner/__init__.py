@@ -154,8 +154,16 @@ def many(target, select, **kwargs):
 
 
 
-def extract(target, field_name):
-    return ScalarJoinType(target, field_name)
+def extract(relationship, field_name):
+    return Relationship(
+        target=ScalarJoinType(relationship._target, field_name),
+        process_results=relationship._process_results,
+        wrap_type=relationship._wrap_type,
+        select=relationship._select,
+        join=relationship._join,
+        args=relationship.args,
+    )
+    
 
 
 class ScalarJoinType(Value):

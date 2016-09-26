@@ -51,19 +51,17 @@ def evaluate(func):
 @evaluate
 def author_join_type():
     def fields():
+        books = many(
+            book_join_type,
+            lambda *_: all_books,
+            join={"id": "authorId"},
+        )
+        
         return {
             "id": field(attr="id", type=GraphQLInt),
             "name": field(attr="name", type=GraphQLString),
-            "books": many(
-                book_join_type,
-                lambda *_: all_books,
-                join={"id": "authorId"},
-            ),
-            "bookTitles": many(
-                extract(book_join_type, "title"),
-                lambda *_: all_books,
-                join={"id": "authorId"},
-            ),
+            "books": books,
+            "bookTitles": extract(books, "title"),
         }
     
     return JoinType(

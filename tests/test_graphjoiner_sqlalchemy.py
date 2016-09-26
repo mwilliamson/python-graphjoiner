@@ -50,19 +50,17 @@ def evaluate(func):
 @evaluate
 def author_join_type():
     def fields():
+        books = many(
+            book_join_type,
+            book_query,
+            join={"id": "authorId"},
+        )
+        
         return {
             "id": field(column_name="id", type=GraphQLInt),
             "name": field(column_name="name", type=GraphQLString),
-            "books": many(
-                book_join_type,
-                book_query,
-                join={"id": "authorId"},
-            ),
-            "bookTitles": many(
-                extract(book_join_type, "title"),
-                book_query,
-                join={"id": "authorId"},
-            ),
+            "books": books,
+            "bookTitles": extract(books, "title"),
         }
 
     def book_query(request, author_query):
