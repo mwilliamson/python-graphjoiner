@@ -6,12 +6,12 @@ from graphql import GraphQLField, GraphQLObjectType, GraphQLList
 from graphql.language.parser import parse
 import six
 
-from .requests import request_from_graphql_ast, Request, field_key
+from .requests import request_from_graphql_ast, request_from_graphql_document, Request, field_key
 from .util import partition
 
 
 def execute(root, query, context=None, variables=None):
-    request = request_from_graphql_ast(parse(query).definitions[0], root, context=context, variables=variables)
+    request = request_from_graphql_document(parse(query), root, context=context, variables=variables)
     return root.fetch(request, None)[0].value
 
 
@@ -34,12 +34,12 @@ def field(**kwargs):
 class Field(object):
     _target = None
     args = {}
-    
+
     def __init__(self, type, **kwargs):
         self.type = type
         for key, value in six.iteritems(kwargs):
             setattr(self, key, value)
-    
+
     def to_graphql_field(self):
         return GraphQLField(
             type=self.type,
@@ -56,7 +56,7 @@ def relationship(join=None, args=None, **kwargs):
         join = {}
     if args is None:
         args = {}
-    
+
     return Relationship(join=join, args=args, **kwargs)
 
 
@@ -68,7 +68,7 @@ class Relationship(object):
         self.args = args
         self._process_results = process_results
         self._wrap_type = wrap_type
-        
+
         self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self._join.keys())
 
     def parent_join_selections(self, parent):
@@ -86,7 +86,7 @@ class Relationship(object):
             Request(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
             for child_key in self._join.values()
         ]
-        
+
         child_request = assoc(request, join_selections=join_selections)
         results = self._target.fetch(child_request, select)
         key_func = lambda result: result.join_values
@@ -95,16 +95,23 @@ class Relationship(object):
             process_results=self._process_results,
             parent_join_keys=self._parent_join_keys,
         )
-    
+
     def to_graphql_field(self):
         # TODO: differentiate between root and non-root types properly
         if self._join:
             resolve = _resolve_fetched_field
         else:
             def resolve(source, args, context, info):
-                request = request_from_graphql_ast(info.field_asts[0], self._target, context=context, variables=info.variable_values, field=self)
+                request = request_from_graphql_ast(
+                    info.field_asts[0],
+                    self._target,
+                    context=context,
+                    variables=info.variable_values,
+                    field=self,
+                    fragments=info.fragments,
+                )
                 return self.fetch(request, None).get(())
-        
+
         return GraphQLField(
             type=self._wrap_type(self._target.to_graphql_type()),
             resolver=resolve,
@@ -121,10 +128,10 @@ class RelationshipResults(object):
         )
         self._process_results = process_results
         self._parent_join_keys = parent_join_keys
-    
+
     def _parent_join_values(self, parent):
         return tuple(parent[join_field] for join_field in self._parent_join_keys)
-    
+
     def get(self, key):
         return self._process_results(self._results.get(self._parent_join_values(key), []))
 
@@ -168,27 +175,27 @@ def extract(relationship, field_name):
         join=relationship._join,
         args=relationship.args,
     )
-    
+
 
 
 class ScalarJoinType(Value):
     def __init__(self, target, field_name):
         self._target = target
         self._field_name = field_name
-    
+
     @property
     def _field(self):
         return self._target.fields()[self._field_name]
-    
+
     def fields(self):
         if isinstance(self._field, Relationship):
             return self._field._target.fields()
         else:
             return {}
-    
+
     def join_fields(self):
         return self._target.join_fields()
-    
+
     def fetch(self, request, select):
         field_request = Request(key=self._field_name, field=self._field, selections=request.selections, context=request.context)
         results = self._target.fetch(assoc(request, selections=[field_request]), select)
@@ -196,7 +203,7 @@ class ScalarJoinType(Value):
             Result(value=result.value[self._field_name], join_values=result.join_values)
             for result in results
         ]
-    
+
     def to_graphql_type(self):
         return self._field.to_graphql_field().type
 
@@ -213,7 +220,7 @@ class JoinType(Value):
         if self._fields is None:
             self._fields = self._generate_fields()
         return self._fields
-    
+
     def join_fields(self):
         return self.fields()
 
@@ -237,7 +244,7 @@ class JoinType(Value):
             assoc(request, selections=immediate_selections),
             select,
         )
-        
+
         for selection in relationship_selections:
             children = selection.field.fetch(selection, select)
             for result in results:
@@ -250,7 +257,7 @@ class JoinType(Value):
             )
             for result in results
         ]
-    
+
     def to_graphql_type(self):
         if self._graphql_type is None:
             self._graphql_type = GraphQLObjectType(
@@ -260,7 +267,7 @@ class JoinType(Value):
                     for name, field in six.iteritems(self.fields())
                 ),
             )
-            
+
         return self._graphql_type
 
 

@@ -3,6 +3,9 @@ from graphql.language import ast as ast_types
 from graphql.execution.values import get_argument_values
 from graphql.type.definition import GraphQLArgumentDefinition
 import six
+from six.moves import filter
+
+from .util import single
 
 
 @attrs
@@ -15,12 +18,25 @@ class Request(object):
     context = attrib(default=None)
 
 
-def request_from_graphql_ast(ast, root, context, variables, field=None):
+def request_from_graphql_document(document, root, context, variables):
+    fragments = dict(
+        (definition.name.value, definition)
+        for definition in document.definitions
+        if isinstance(definition, ast_types.FragmentDefinition)
+    )
+    query = single(list(filter(
+        lambda definition: isinstance(definition, ast_types.OperationDefinition),
+        document.definitions
+    )))
+    return request_from_graphql_ast(query, root, context=context, variables=variables, fragments=fragments, field=None)
+
+
+def request_from_graphql_ast(ast, root, context, variables, field, fragments):
     if isinstance(ast, ast_types.Field):
         key = field_key(ast)
     else:
         key = None
-    
+
     if field is None:
         args = {}
     else:
@@ -34,8 +50,8 @@ def request_from_graphql_ast(ast, root, context, variables, field=None):
             for arg_name, arg in six.iteritems(field.args)
         ]
         args = get_argument_values(arg_definitions, getattr(ast, "arguments", []), variables=variables)
-    
-    selections = _graphql_selections(ast, root, context=context, variables=variables)
+
+    selections = _graphql_selections(ast, root, context=context, variables=variables, fragments=fragments)
 
     return Request(
         key=key,
@@ -57,24 +73,45 @@ def field_key(ast):
         return ast.alias.value
 
 
-    
-def _graphql_selections(ast, root, context, variables):
+
+def _graphql_selections(ast, root, context, variables, fragments):
     if ast.selection_set:
         fields = root.fields()
+
+        field_selections = []
+
+        for selection in ast.selection_set.selections:
+            if isinstance(selection, ast_types.Field):
+                field_selections.append(selection)
+            elif isinstance(selection, ast_types.FragmentSpread):
+                # TODO: handle nested fragments
+                # TODO: handle type conditions
+                for fragment_selection in fragments[selection.name.value].selection_set.selections:
+                    field_selections.append(fragment_selection)
+            else:
+                raise Exception("Unknown selection: {}".format(type(selection)))
+
         return [
-            _request_from_selection(selection, context=context, variables=variables, field=fields[_field_name(selection)])
-            for selection in ast.selection_set.selections
+            _request_from_selection(
+                selection,
+                context=context,
+                variables=variables,
+                fragments=fragments,
+                field=fields[_field_name(selection)]
+            )
+            for selection in field_selections
         ]
     else:
         return []
 
 
-def _request_from_selection(selection, field, context, variables):
+def _request_from_selection(selection, field, context, variables, fragments):
     return request_from_graphql_ast(
         selection,
         context=context,
         variables=variables,
+        fragments=fragments,
         field=field,
         root=field._target,
     )
-    
+

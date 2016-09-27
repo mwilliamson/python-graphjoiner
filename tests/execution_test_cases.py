@@ -11,9 +11,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "books": [
                 {
@@ -30,7 +30,7 @@ class ExecutionTestCases(object):
                 },
             ]
         }))
-        
+
 
     def test_querying_list_of_entities_with_child_entity(self):
         query = """
@@ -43,9 +43,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "books": [
                 {
@@ -69,7 +69,7 @@ class ExecutionTestCases(object):
             ]
         }))
 
-        
+
     def test_querying_single_entity_with_arg(self):
         # TODO: add test for non-top-level arg
         query = """
@@ -79,16 +79,16 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": {
                 "name": "PG Wodehouse",
             },
         }))
 
-        
+
     def test_single_entity_is_null_if_not_found(self):
         query = """
             {
@@ -97,15 +97,15 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": None,
         }))
 
 
-        
+
     def test_querying_single_entity_with_child_entities(self):
         query = """
             {
@@ -116,9 +116,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": {
                 "books": [
@@ -127,7 +127,7 @@ class ExecutionTestCases(object):
                 ],
             },
         }))
-        
+
 
     def test_querying_scalar_list(self):
         query = """
@@ -137,9 +137,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": {
                 "bookTitles": [
@@ -148,7 +148,7 @@ class ExecutionTestCases(object):
                 ],
             },
         }))
-        
+
 
     def test_querying_extracted_object(self):
         query = """
@@ -160,9 +160,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "book": {
                 "booksBySameAuthor": [
@@ -171,8 +171,8 @@ class ExecutionTestCases(object):
                 ],
             },
         }))
-    
-    
+
+
     def test_scalar_field_aliases(self):
         query = """
             {
@@ -181,9 +181,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": {
                 "authorName": "PG Wodehouse",
@@ -199,16 +199,16 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "wodehouse": {
                 "name": "PG Wodehouse"
             }
         }))
-    
-    
+
+
     def test_can_alias_same_top_level_field_multiple_times_with_different_arguments(self):
         query = """
             {
@@ -220,9 +220,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "wodehouse": {
                 "name": "PG Wodehouse"
@@ -231,8 +231,8 @@ class ExecutionTestCases(object):
                 "name": "Joseph Heller"
             }
         }))
-    
-    
+
+
     def test_nested_relationship_field_aliases(self):
         query = """
             {
@@ -243,9 +243,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": {
                 "b": [
@@ -254,8 +254,8 @@ class ExecutionTestCases(object):
                 ]
             }
         }))
-    
-    
+
+
     def test_field_alias_in_child_does_not_clash_with_join_fields(self):
         query = """
             {
@@ -266,9 +266,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": {
                 "books": [
@@ -278,7 +278,7 @@ class ExecutionTestCases(object):
             }
         }))
 
-    
+
     def test_field_alias_in_parent_does_not_clash_with_join_fields(self):
         query = """
             {
@@ -290,9 +290,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query)
-        
+
         assert_that(result, equal_to({
             "author": {
                 "id": "PG Wodehouse",
@@ -303,7 +303,7 @@ class ExecutionTestCases(object):
             }
         }))
 
-    
+
     def test_variable_can_be_used_in_top_level_argument(self):
         query = """
             query getAuthor($authorId: Int) {
@@ -315,9 +315,9 @@ class ExecutionTestCases(object):
                 }
             }
         """
-        
+
         result = self.execute(query, variables={"authorId": 1})
-        
+
         assert_that(result, equal_to({
             "author": {
                 "id": "PG Wodehouse",
@@ -326,4 +326,37 @@ class ExecutionTestCases(object):
                     {"title": "Right Ho, Jeeves"},
                 ]
             }
+        }))
+
+    def test_querying_list_of_entities_with_fragment_spread(self):
+        query = """
+            {
+                books {
+                    ...BookIdentifiers
+                }
+            }
+
+            fragment BookIdentifiers on Book {
+                id
+                title
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "books": [
+                {
+                    "id": 1,
+                    "title": "Leave It to Psmith",
+                },
+                {
+                    "id": 2,
+                    "title": "Right Ho, Jeeves",
+                },
+                {
+                    "id": 3,
+                    "title": "Catch-22",
+                },
+            ]
         }))
