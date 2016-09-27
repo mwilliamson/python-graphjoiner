@@ -129,7 +129,7 @@ class ExecutionTestCases(object):
         }))
 
 
-    def test_querying_scalar_list(self):
+    def test_querying_extracted_scalar(self):
         query = """
             {
                 author(id: 1) {
