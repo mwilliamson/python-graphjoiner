@@ -78,9 +78,7 @@ def _graphql_selections(ast, root, context, variables, fragments):
     if ast.selection_set:
         fields = root.fields()
 
-        field_selections = []
-
-        _add_fields(ast, field_selections, fragments)
+        field_selections = _collect_fields(ast, fragments)
 
         return [
             _request_from_selection(
@@ -95,6 +93,13 @@ def _graphql_selections(ast, root, context, variables, fragments):
     else:
         return []
 
+
+def _collect_fields(ast, fragments):
+    field_selections = []
+    
+    _add_fields(ast, field_selections, fragments)
+    
+    return field_selections
 
 def _add_fields(ast, field_selections, fragments):
     for selection in ast.selection_set.selections:
