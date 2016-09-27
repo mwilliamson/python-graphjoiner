@@ -360,3 +360,40 @@ class ExecutionTestCases(object):
                 },
             ]
         }))
+
+    def test_querying_list_of_entities_with_nested_fragment_spread(self):
+        query = """
+            {
+                books {
+                    ...BookGubbins
+                }
+            }
+
+            fragment BookGubbins on Book {
+                ...BookIdentifiers
+            }
+
+            fragment BookIdentifiers on Book {
+                id
+                title
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "books": [
+                {
+                    "id": 1,
+                    "title": "Leave It to Psmith",
+                },
+                {
+                    "id": 2,
+                    "title": "Right Ho, Jeeves",
+                },
+                {
+                    "id": 3,
+                    "title": "Catch-22",
+                },
+            ]
+        }))

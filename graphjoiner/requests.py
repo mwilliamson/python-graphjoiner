@@ -80,16 +80,7 @@ def _graphql_selections(ast, root, context, variables, fragments):
 
         field_selections = []
 
-        for selection in ast.selection_set.selections:
-            if isinstance(selection, ast_types.Field):
-                field_selections.append(selection)
-            elif isinstance(selection, ast_types.FragmentSpread):
-                # TODO: handle nested fragments
-                # TODO: handle type conditions
-                for fragment_selection in fragments[selection.name.value].selection_set.selections:
-                    field_selections.append(fragment_selection)
-            else:
-                raise Exception("Unknown selection: {}".format(type(selection)))
+        _add_fields(ast, field_selections, fragments)
 
         return [
             _request_from_selection(
@@ -103,6 +94,17 @@ def _graphql_selections(ast, root, context, variables, fragments):
         ]
     else:
         return []
+
+
+def _add_fields(ast, field_selections, fragments):
+    for selection in ast.selection_set.selections:
+        if isinstance(selection, ast_types.Field):
+            field_selections.append(selection)
+        elif isinstance(selection, ast_types.FragmentSpread):
+            # TODO: handle type conditions
+            _add_fields(fragments[selection.name.value], field_selections, fragments)
+        else:
+            raise Exception("Unknown selection: {}".format(type(selection)))
 
 
 def _request_from_selection(selection, field, context, variables, fragments):
