@@ -14,7 +14,7 @@ setup(
     long_description=read("README.rst"),
     author='Michael Williamson',
     author_email='mike@zwobble.org',
-    url='http://github.com/mwilliamson/python-graphjoiner',
+    url='http://github.com/healx/python-graphjoiner',
     packages=['graphjoiner'],
     keywords="graphql graph join ",
     install_requires=["graphql-core>=0.5.3,<0.6", "attrs>=16.1.0,<17"],
