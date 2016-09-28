@@ -119,8 +119,6 @@ def _add_fields(ast, field_selections, fragments):
 
 def _merge_fields(selections):
     # TODO: validation
-    # TODO: nested fields aren't merged, but doesn't matter since each
-    # layer redoes the field selection (including merging), which should also be fixed
 
     merged = collections.OrderedDict()
 
