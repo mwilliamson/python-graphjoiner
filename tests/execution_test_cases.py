@@ -377,3 +377,24 @@ class ExecutionTestCases(object):
                 "title": "Leave It to Psmith",
             }
         }))
+
+    def test_querying_list_of_entities_with_inline_fragment(self):
+        query = """
+            {
+                book(id: 1) {
+                    ... on Book {
+                        id
+                        title
+                    }
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "book": {
+                "id": 1,
+                "title": "Leave It to Psmith",
+            }
+        }))

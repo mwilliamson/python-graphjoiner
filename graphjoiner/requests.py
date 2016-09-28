@@ -96,9 +96,9 @@ def _graphql_selections(ast, root, context, variables, fragments):
 
 def _collect_fields(ast, fragments):
     field_selections = []
-    
+
     _add_fields(ast, field_selections, fragments)
-    
+
     return field_selections
 
 def _add_fields(ast, field_selections, fragments):
@@ -108,6 +108,8 @@ def _add_fields(ast, field_selections, fragments):
         elif isinstance(selection, ast_types.FragmentSpread):
             # TODO: handle type conditions
             _add_fields(fragments[selection.name.value], field_selections, fragments)
+        elif isinstance(selection, ast_types.InlineFragment):
+            _add_fields(selection, field_selections, fragments)
         else:
             raise Exception("Unknown selection: {}".format(type(selection)))
 
