@@ -1,10 +1,6 @@
 GraphJoiner: Implementing GraphQL with joins
 ============================================
 
-In some use cases, I've found it more natural to generate the requested GraphQL
-data using SQL joins rather than resolving values individually. This is a proof
-of concept that provides an alternative way of responding to GraphQL queries.
-
 In the reference GraphQL implementation, resolve functions describe how to
 fulfil some part of the requested data for each instance of an object.
 If implemented naively with a SQL backend, this results in the N+1 problem.
@@ -82,9 +78,9 @@ We then define object types for the root, books and authors:
                 query = query.filter(Book.genre == request.args["genre"])
 
             return query
-        
+
         return RootJoinType(name="Root", fields=fields)
-    
+
     root = create_root()
 
     def fetch_immediates_from_database(request, query):
@@ -114,13 +110,13 @@ We then define object types for the root, books and authors:
             return Query([]) \
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
-        
+
         return JoinType(
             name="Book",
             fields=fields,
             fetch_immediates=fetch_immediates_from_database,
         )
-            
+
     book_join_type = create_book_join_type()
 
     def create_author_join_type():
@@ -129,7 +125,7 @@ We then define object types for the root, books and authors:
                 "id": field(column_name="id", type=GraphQLInt),
                 "name": field(column_name="name", type=GraphQLString),
             }
-        
+
         return JoinType(
             name="Author",
             fields=fields,
@@ -153,7 +149,7 @@ We can execute the query by calling ``execute``:
             }
         }
     """
-    
+
     class Context(object):
         def __init__(self, session):
             self.session = session
@@ -209,9 +205,9 @@ Let's break things down a little, starting with the definition of the root objec
                 query = query.filter(Book.genre == request.args["genre"])
 
             return query
-        
+
         return RootJoinType(name="Root", fields=fields)
-    
+
     root = create_root()
 
 For each object type, we need to define its fields.
@@ -241,13 +237,13 @@ This means we need to define ``book_join_type``:
             return Query([]) \
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
-        
+
         return JoinType(
             name="Book",
             fields=fields,
             fetch_immediates=fetch_immediates_from_database,
         )
-            
+
     book_join_type = create_book_join_type()
 
 The ``author`` field is defined as a one-to-one mapping from book to author.
@@ -293,13 +289,13 @@ we can request the books by an author:
                 "name": field(column_name="name", type=GraphQLString),
                 "author": many(book_join_type, book_query, join={"id": "authorId"}),
             }
-        
+
         def book_query(request, author_query):
             authors = author_query.with_entities(Author.id).distinct().subquery()
             return Query([]) \
                 .select_from(Book) \
                 .join(authors, authors.c.id == Book.author_id)
-                
+
         return JoinType(
             name="Author",
             fields=fields,
