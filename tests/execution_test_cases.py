@@ -399,6 +399,31 @@ class ExecutionTestCases(object):
             }
         }))
 
+    def test_scalar_fields_are_merged(self):
+        query = """
+            {
+                book(id: 1) {
+                    author {
+                        name
+                    }
+
+                    author {
+                        name
+                    }
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "book": {
+                "author": {
+                    "name": "PG Wodehouse",
+                }
+            }
+        }))
+
     def test_object_fields_are_merged(self):
         query = """
             {

@@ -127,9 +127,10 @@ def _merge_fields(selections):
     for selection in selections:
         key = field_key(selection)
         if key in merged:
-            merged[key] = copy(merged[key])
-            merged[key].selection_set = copy(merged[key].selection_set)
-            merged[key].selection_set.selections += selection.selection_set.selections
+            if selection.selection_set is not None:
+                merged[key] = copy(merged[key])
+                merged[key].selection_set = copy(merged[key].selection_set)
+                merged[key].selection_set.selections += selection.selection_set.selections
         else:
             merged[key] = selection
 
