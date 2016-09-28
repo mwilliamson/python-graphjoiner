@@ -1,3 +1,6 @@
+import collections
+from copy import copy
+
 from attr import attrs, attrib
 from graphql.language import ast as ast_types
 from graphql.execution.values import get_argument_values
@@ -78,7 +81,7 @@ def _graphql_selections(ast, root, context, variables, fragments):
     if ast.selection_set:
         fields = root.fields()
 
-        field_selections = _collect_fields(ast, fragments)
+        field_selections = _merge_fields(_collect_fields(ast, fragments))
 
         return [
             _request_from_selection(
@@ -112,6 +115,25 @@ def _add_fields(ast, field_selections, fragments):
             _add_fields(selection, field_selections, fragments)
         else:
             raise Exception("Unknown selection: {}".format(type(selection)))
+
+
+def _merge_fields(selections):
+    # TODO: validation
+    # TODO: nested fields aren't merged, but doesn't matter since each
+    # layer redoes the field selection (including merging), which should also be fixed
+
+    merged = collections.OrderedDict()
+
+    for selection in selections:
+        key = field_key(selection)
+        if key in merged:
+            merged[key] = copy(merged[key])
+            merged[key].selection_set = copy(merged[key].selection_set)
+            merged[key].selection_set.selections += selection.selection_set.selections
+        else:
+            merged[key] = selection
+
+    return merged.values()
 
 
 def _request_from_selection(selection, field, context, variables, fragments):

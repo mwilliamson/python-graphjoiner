@@ -398,3 +398,67 @@ class ExecutionTestCases(object):
                 "title": "Leave It to Psmith",
             }
         }))
+
+    def test_object_fields_are_merged(self):
+        query = """
+            {
+                book(id: 1) {
+                    author {
+                        id
+                    }
+
+                    author {
+                        name
+                    }
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "book": {
+                "author": {
+                    "id": 1,
+                    "name": "PG Wodehouse",
+                }
+            }
+        }))
+
+    def test_nested_object_fields_are_merged(self):
+        query = """
+            {
+                book(id: 1) {
+                    author {
+                        books {
+                            id
+                        }
+                    }
+
+                    author {
+                        books {
+                            title
+                        }
+                    }
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "book": {
+                "author": {
+                    "books": [
+                        {
+                            "id": 1,
+                            "title": "Leave It to Psmith"
+                        },
+                        {
+                            "id": 2,
+                            "title": "Right Ho, Jeeves"
+                        }
+                    ]
+                }
+            }
+        }))
