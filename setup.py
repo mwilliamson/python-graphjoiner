@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name='graphjoiner',
-    version='0.2.2',
+    version='0.2.3',
     description='Implementing GraphQL with joins',
     long_description=read("README.rst"),
     author='Michael Williamson',
