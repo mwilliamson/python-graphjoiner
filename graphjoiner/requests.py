@@ -5,7 +5,7 @@ from attr import attrs, attrib
 from graphql.language import ast as ast_types
 from graphql.execution.values import get_argument_values
 from graphql.type.definition import GraphQLArgumentDefinition
-from graphql.type.directives import GraphQLIncludeDirective
+from graphql.type.directives import GraphQLIncludeDirective, GraphQLSkipDirective
 import six
 from six.moves import filter
 
@@ -122,7 +122,11 @@ def _add_fields(ast, field_selections, fragments, variables):
 def _should_include_node(node, variables):
     for directive in node.directives:
         name = directive.name.value
-        if name == "include":
+        if name == "skip":
+            args = get_argument_values(GraphQLSkipDirective.args, directive.arguments, variables)
+            if args.get("if") is True:
+                return False
+        elif name == "include":
             args = get_argument_values(GraphQLIncludeDirective.args, directive.arguments, variables)
             if args.get("if") is False:
                 return False

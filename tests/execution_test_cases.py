@@ -505,3 +505,21 @@ class ExecutionTestCases(object):
                 "title": "Leave It to Psmith"
             }
         }))
+
+    def test_skip_directive_on_field_conditionally_skips_field(self):
+        query = """
+            {
+                book(id: 1) {
+                    id @skip(if: true)
+                    title @skip(if: false)
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "book": {
+                "title": "Leave It to Psmith"
+            }
+        }))
