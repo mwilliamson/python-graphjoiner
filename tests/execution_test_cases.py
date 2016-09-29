@@ -523,3 +523,23 @@ class ExecutionTestCases(object):
                 "title": "Leave It to Psmith"
             }
         }))
+
+    def test_both_include_and_skip_directives_must_be_satisified(self):
+        query = """
+            {
+                book(id: 1) {
+                    includeFalse_skipFalse: title @include(if: false) @skip(if: false)
+                    includeFalse_skipTrue: title @include(if: false) @skip(if: true)
+                    includeTrue_skipFalse: title @include(if: true) @skip(if: false)
+                    includeTrue_skipTrue: title @include(if: true) @skip(if: true)
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "book": {
+                "includeTrue_skipFalse": "Leave It to Psmith"
+            }
+        }))
