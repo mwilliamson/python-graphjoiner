@@ -487,3 +487,21 @@ class ExecutionTestCases(object):
                 }
             }
         }))
+
+    def test_include_directive_on_field_conditionally_includes_field(self):
+        query = """
+            {
+                book(id: 1) {
+                    id @include(if: false)
+                    title @include(if: true)
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "book": {
+                "title": "Leave It to Psmith"
+            }
+        }))

@@ -5,6 +5,7 @@ from attr import attrs, attrib
 from graphql.language import ast as ast_types
 from graphql.execution.values import get_argument_values
 from graphql.type.definition import GraphQLArgumentDefinition
+from graphql.type.directives import GraphQLIncludeDirective
 import six
 from six.moves import filter
 
@@ -81,7 +82,7 @@ def _graphql_selections(ast, root, context, variables, fragments):
     if ast.selection_set:
         fields = root.fields()
 
-        field_selections = _merge_fields(_collect_fields(ast, fragments))
+        field_selections = _merge_fields(_collect_fields(ast, fragments=fragments, variables=variables))
 
         return [
             _request_from_selection(
@@ -97,24 +98,38 @@ def _graphql_selections(ast, root, context, variables, fragments):
         return []
 
 
-def _collect_fields(ast, fragments):
+def _collect_fields(ast, fragments, variables):
     field_selections = []
 
-    _add_fields(ast, field_selections, fragments)
+    _add_fields(ast, field_selections, fragments=fragments, variables=variables)
 
     return field_selections
 
-def _add_fields(ast, field_selections, fragments):
+def _add_fields(ast, field_selections, fragments, variables):
     for selection in ast.selection_set.selections:
-        if isinstance(selection, ast_types.Field):
-            field_selections.append(selection)
-        elif isinstance(selection, ast_types.FragmentSpread):
-            # TODO: handle type conditions
-            _add_fields(fragments[selection.name.value], field_selections, fragments)
-        elif isinstance(selection, ast_types.InlineFragment):
-            _add_fields(selection, field_selections, fragments)
+        if _should_include_node(selection, variables=variables):
+            if isinstance(selection, ast_types.Field):
+                field_selections.append(selection)
+            elif isinstance(selection, ast_types.FragmentSpread):
+                # TODO: handle type conditions
+                _add_fields(fragments[selection.name.value], field_selections, fragments=fragments, variables=variables)
+            elif isinstance(selection, ast_types.InlineFragment):
+                _add_fields(selection, field_selections, fragments=fragments, variables=variables)
+            else:
+                raise Exception("Unknown selection: {}".format(type(selection)))
+
+
+def _should_include_node(node, variables):
+    for directive in node.directives:
+        name = directive.name.value
+        if name == "include":
+            args = get_argument_values(GraphQLIncludeDirective.args, directive.arguments, variables)
+            if args.get("if") is False:
+                return False
         else:
-            raise Exception("Unknown selection: {}".format(type(selection)))
+            raise Exception("Unknown directive: {}".format(name))
+
+    return True
 
 
 def _merge_fields(selections):
