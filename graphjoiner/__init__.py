@@ -7,7 +7,7 @@ from graphql.language.parser import parse
 import six
 
 from .requests import request_from_graphql_ast, request_from_graphql_document, Request, field_key
-from .util import partition
+from .util import partition, unique
 
 
 def execute(root, query, context=None, variables=None):
@@ -238,7 +238,10 @@ class JoinType(Value):
             for parent_join_selection in selection.field.parent_join_selections(self)
         ]
 
-        immediate_selections = requested_immediate_selections + list(request.join_selections) + join_to_children_selections
+        immediate_selections = unique(
+            requested_immediate_selections + list(request.join_selections) + join_to_children_selections,
+            key=lambda selection: selection.key,
+        )
 
         results = self.fetch_immediates(
             assoc(request, selections=immediate_selections),

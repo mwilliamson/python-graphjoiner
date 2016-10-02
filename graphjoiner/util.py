@@ -16,3 +16,16 @@ def single(values):
         return values[0]
     else:
         raise Exception("Expected 1 but got {}".format(len(values)))
+
+
+def unique(values, key):
+    result = []
+    seen = set()
+
+    for value in values:
+        key_value = key(value)
+        if key_value not in seen:
+            seen.add(key_value)
+            result.append(value)
+
+    return result
