@@ -32,15 +32,15 @@ all_books = [
 ]
 
 
-def fetch_immediates_from_obj(request, objs):
+def fetch_immediates_from_obj(selections, objs, context):
     requested_fields = [
         (selection.key, selection.field.attr)
-        for selection in request.selections
+        for selection in selections
     ]
-    
+
     def read_obj(obj):
         return dict((key, getattr(obj, attr)) for (key, attr) in requested_fields)
-    
+
     return list(map(read_obj, objs))
 
 
@@ -62,7 +62,7 @@ def author_join_type():
             "books": books,
             "bookTitles": extract(books, "title"),
         }
-    
+
     return JoinType(
         name="Author",
         fields=fields,
@@ -78,7 +78,7 @@ def book_join_type():
             lambda *_: all_authors,
             join={"authorId": "id"},
         )
-        
+
         return {
             "id": field(attr="id", type=GraphQLInt),
             "title": field(attr="title", type=GraphQLString),
@@ -86,7 +86,7 @@ def book_join_type():
             "author": author,
             "booksBySameAuthor": extract(author, "books"),
         }
-    
+
     return JoinType(
         name="Book",
         fields=fields,
@@ -102,25 +102,25 @@ def root():
             "book": single(book_join_type, book_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
             "author": single(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
         }
-        
-    def book_query(request, _):
+
+    def book_query(args, _):
         books = all_books
-        
-        book_id = request.args.get("id")
+
+        book_id = args.get("id")
         if book_id is not None:
             books = list(filter(lambda book: book.id == book_id, books))
-        
+
         return books
-    
-    def author_query(request, _):
+
+    def author_query(args, _):
         authors = all_authors
-        
-        author_id = request.args.get("id")
+
+        author_id = args.get("id")
         if author_id is not None:
             authors = list(filter(lambda author: author.id == author_id, authors))
-        
+
         return authors
-    
+
     return RootJoinType(
         name="Root",
         fields=fields,
@@ -132,8 +132,8 @@ class TestGraphJoiner(ExecutionTestCases):
         schema = GraphQLSchema(
             query=root.to_graphql_type(),
         )
-        
+
         result = graphql(schema, query, variable_values=variables)
-        
+
         assert not result.errors
         return result.data

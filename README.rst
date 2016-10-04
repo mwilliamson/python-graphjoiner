@@ -71,11 +71,11 @@ We then define object types for the root, books and authors:
                 )
             }
 
-        def books_query(request, _):
+        def books_query(args, _):
             query = Query([]).select_from(Book)
 
-            if "genre" in request.args:
-                query = query.filter(Book.genre == request.args["genre"])
+            if "genre" in args:
+                query = query.filter(Book.genre == args["genre"])
 
             return query
 
@@ -83,16 +83,16 @@ We then define object types for the root, books and authors:
 
     root = create_root()
 
-    def fetch_immediates_from_database(request, query):
+    def fetch_immediates_from_database(selections, query, context):
         query = query.with_entities(*(
             selection.field.column_name
-            for selection in request.selections
+            for selection in selections
         ))
-        keys = tuple(selection.key for selection in request.selections)
+        keys = tuple(selection.key for selection in selections)
 
         return [
             dict(zip(keys, row))
-            for row in query.with_session(request.context.session).all()
+            for row in query.with_session(context.session).all()
         ]
 
     def create_book_join_type():
@@ -105,7 +105,7 @@ We then define object types for the root, books and authors:
                 "author": single(author_join_type, author_query, join={"authorId": "id"}),
             }
 
-        def author_query(request, book_query):
+        def author_query(args, book_query):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
@@ -198,11 +198,11 @@ Let's break things down a little, starting with the definition of the root objec
                 )
             }
 
-        def books_query(request, _):
+        def books_query(args, _):
             query = Query([]).select_from(Book)
 
-            if "genre" in request.args:
-                query = query.filter(Book.genre == request.args["genre"])
+            if "genre" in args:
+                query = query.filter(Book.genre == args["genre"])
 
             return query
 
@@ -232,7 +232,7 @@ This means we need to define ``book_join_type``:
                 "author": single(author_join_type, author_query, join={"authorId": "id"}),
             }
 
-        def author_query(request, book_query):
+        def author_query(args, book_query):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
@@ -258,23 +258,23 @@ this is fine for relationships defined on the root.)
 
 The remaining fields define a mapping from the GraphQL field to the database
 column. This mapping is handled by ``fetch_immediates_from_database``.
-The value of ``request.selections`` in
+The value of ``selections`` in
 ``fetch_immediates()`` is the selections of fields that aren't defined as relationships
 (using ``single`` or ``many``) that were either explicitly requested in the
 original GraphQL query, or are required as part of the join.
 
 .. code-block:: python
 
-    def fetch_immediates_from_database(fields, request, query):
+    def fetch_immediates_from_database(selections, query, context):
         query = query.with_entities(*(
             fields[selection.field_name].column_name
-            for selection in request.selections
+            for selection in selections
         ))
-        keys = tuple(selection.key for selection in request.selections)
+        keys = tuple(selection.key for selection in selections)
 
         return [
             dict(zip(keys, row))
-            for row in query.with_session(request.context.session).all()
+            for row in query.with_session(context.session).all()
         ]
 
 For completeness, we can tweak the definition of ``author_join_type`` so
@@ -290,7 +290,7 @@ we can request the books by an author:
                 "author": many(book_join_type, book_query, join={"id": "authorId"}),
             }
 
-        def book_query(request, author_query):
+        def book_query(args, author_query):
             authors = author_query.with_entities(Author.id).distinct().subquery()
             return Query([]) \
                 .select_from(Book) \

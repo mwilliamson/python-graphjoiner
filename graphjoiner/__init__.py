@@ -79,7 +79,7 @@ class Relationship(object):
         ]
 
     def fetch(self, request, select_parent):
-        select = self._select(request, select_parent)
+        select = self._select(request.args, select_parent)
         fields = self._target.fields()
         join_fields = self._target.join_fields()
         join_selections = [
@@ -243,10 +243,7 @@ class JoinType(Value):
             key=lambda selection: selection.key,
         )
 
-        results = self.fetch_immediates(
-            assoc(request, selections=immediate_selections),
-            select,
-        )
+        results = self.fetch_immediates(immediate_selections, select, request.context)
 
         for selection in relationship_selections:
             children = selection.field.fetch(selection, select)

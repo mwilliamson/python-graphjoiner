@@ -35,11 +35,11 @@ def test_example():
     session.add(Book(title="Right Ho, Jeeves", author_id=1, genre="comedy"))
     session.add(Book(title="Catch-22", author_id=2, genre="comedy"))
     session.add(Book(title="Around the World in Eighty Days", author_id=3, genre="adventure"))
-    
 
 
 
-    
+
+
     from graphql import GraphQLInt, GraphQLString, GraphQLArgument
     from graphjoiner import JoinType, RootJoinType, single, many, field
     from sqlalchemy.orm import Query
@@ -54,28 +54,28 @@ def test_example():
                 )
             }
 
-        def books_query(request, _):
+        def books_query(args, _):
             query = Query([]).select_from(Book)
 
-            if "genre" in request.args:
-                query = query.filter(Book.genre == request.args["genre"])
+            if "genre" in args:
+                query = query.filter(Book.genre == args["genre"])
 
             return query
-        
+
         return RootJoinType(name="Root", fields=fields)
-    
+
     root = create_root()
 
-    def fetch_immediates_from_database(request, query):
+    def fetch_immediates_from_database(selections, query, context):
         query = query.with_entities(*(
             selection.field.column_name
-            for selection in request.selections
+            for selection in selections
         ))
-        keys = tuple(selection.key for selection in request.selections)
+        keys = tuple(selection.key for selection in selections)
 
         return [
             dict(zip(keys, row))
-            for row in query.with_session(request.context.session).all()
+            for row in query.with_session(context.session).all()
         ]
 
     def create_book_join_type():
@@ -88,18 +88,18 @@ def test_example():
                 "author": single(author_join_type, author_query, join={"authorId": "id"}),
             }
 
-        def author_query(request, book_query):
+        def author_query(args, book_query):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \
                 .join(books, books.c.author_id == Author.id)
-        
+
         return JoinType(
             name="Book",
             fields=fields,
             fetch_immediates=fetch_immediates_from_database,
         )
-            
+
     book_join_type = create_book_join_type()
 
     def create_author_join_type():
@@ -108,14 +108,14 @@ def test_example():
                 "id": field(column_name="id", type=GraphQLInt),
                 "name": field(column_name="name", type=GraphQLString),
             }
-        
+
         return JoinType(
             name="Author",
             fields=fields,
             fetch_immediates=fetch_immediates_from_database,
         )
     author_join_type = create_author_join_type()
-    
+
 
     from graphjoiner import execute
 
@@ -129,7 +129,7 @@ def test_example():
             }
         }
     """
-    
+
     class Context(object):
         def __init__(self, session):
             self.session = session
