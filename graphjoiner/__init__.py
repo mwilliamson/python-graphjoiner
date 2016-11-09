@@ -32,7 +32,7 @@ def field(**kwargs):
 
 
 class Field(object):
-    _target = None
+    target = None
     args = {}
 
     def __init__(self, type, **kwargs):
@@ -62,33 +62,52 @@ def relationship(join=None, args=None, **kwargs):
 
 class Relationship(object):
     def __init__(self, target, process_results, wrap_type, select, join, args):
-        self._target = target
-        self._select = select
-        self._join = join
+        self.target = target
+        self.select = select
+        self.join = join
         self.args = args
         self._process_results = process_results
         self._wrap_type = wrap_type
 
-        self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self._join.keys())
+        self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self.join.keys())
+
+    def copy(self, target=None, select=None, join=None, args=None):
+        if target is None:
+            target = self.target
+        if select is None:
+            select = self.select
+        if join is None:
+            join = self.join
+        if args is None:
+            args = self.args
+
+        return Relationship(
+            target=target,
+            select=select,
+            join=join,
+            args=args,
+            wrap_type=self._wrap_type,
+            process_results=self._process_results,
+        )
 
     def parent_join_selections(self, parent):
         fields = parent.fields()
         return [
             Request(field=fields[field_name], key=key)
-            for field_name, key in zip(self._join.keys(), self._parent_join_keys)
+            for field_name, key in zip(self.join.keys(), self._parent_join_keys)
         ]
 
     def fetch(self, request, select_parent):
-        select = self._select(request.args, select_parent)
-        fields = self._target.fields()
-        join_fields = self._target.join_fields()
+        select = self.select(request.args, select_parent)
+        fields = self.target.fields()
+        join_fields = self.target.join_fields()
         join_selections = [
             Request(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
-            for child_key in self._join.values()
+            for child_key in self.join.values()
         ]
 
         child_request = assoc(request, join_selections=join_selections)
-        results = self._target.fetch(child_request, select)
+        results = self.target.fetch(child_request, select)
         key_func = lambda result: result.join_values
         return RelationshipResults(
             results=results,
@@ -98,13 +117,13 @@ class Relationship(object):
 
     def to_graphql_field(self):
         # TODO: differentiate between root and non-root types properly
-        if self._join:
+        if self.join:
             resolve = _resolve_fetched_field
         else:
             def resolve(source, args, context, info):
                 request = request_from_graphql_ast(
                     info.field_asts[0],
-                    self._target,
+                    self.target,
                     context=context,
                     variables=info.variable_values,
                     field=self,
@@ -113,7 +132,7 @@ class Relationship(object):
                 return self.fetch(request, None).get(())
 
         return GraphQLField(
-            type=self._wrap_type(self._target.to_graphql_type()),
+            type=self._wrap_type(self.target.to_graphql_type()),
             resolver=resolve,
             args=self.args,
         )
@@ -167,13 +186,8 @@ def many(target, select, **kwargs):
 
 
 def extract(relationship, field_name):
-    return Relationship(
-        target=ScalarJoinType(relationship._target, field_name),
-        process_results=relationship._process_results,
-        wrap_type=relationship._wrap_type,
-        select=relationship._select,
-        join=relationship._join,
-        args=relationship.args,
+    return relationship.copy(
+        target=ScalarJoinType(relationship.target, field_name),
     )
 
 
@@ -189,7 +203,7 @@ class ScalarJoinType(Value):
 
     def fields(self):
         if isinstance(self._field, Relationship):
-            return self._field._target.fields()
+            return self._field.target.fields()
         else:
             return {}
 

@@ -161,6 +161,6 @@ def _request_from_selection(selection, field, context, variables, fragments):
         variables=variables,
         fragments=fragments,
         field=field,
-        root=field._target,
+        root=field.target,
     )
 
