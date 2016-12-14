@@ -31,7 +31,11 @@ def field(**kwargs):
     return Field(**kwargs)
 
 
-class Field(object):
+class FieldBase(object):
+    pass
+
+
+class Field(FieldBase):
     target = None
     args = {}
 
@@ -60,7 +64,7 @@ def relationship(join=None, args=None, **kwargs):
     return Relationship(join=join, args=args, **kwargs)
 
 
-class Relationship(object):
+class Relationship(FieldBase):
     def __init__(self, target, process_results, wrap_type, select, join, args):
         self.target = target
         self.select = select
