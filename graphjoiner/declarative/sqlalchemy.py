@@ -38,12 +38,19 @@ class SqlAlchemyJoiner(object):
             raise Exception("TODO")
     
     def _find_join_candidates(self, target):
-        for key, field in self._get_simple_fields(self._cls):
+        for local_field, target_field in self._find_join_candidates_directional(self._cls, target):
+            yield local_field, target_field
+        for target_field, local_field in self._find_join_candidates_directional(target, self._cls):
+            yield local_field, target_field
+    
+    def _find_join_candidates_directional(self, local, remote):
+        for key, field in self._get_simple_fields(local):
             column, = field.column.property.columns
             for foreign_key in column.foreign_keys:
-                if target._joiner._model.__table__ == foreign_key.column.table:
+                if remote._joiner._model.__table__ == foreign_key.column.table:
                     remote_primary_key_column, = foreign_key.column.table.primary_key
-                    yield key, self._find_field_for_column(target, remote_primary_key_column)[0]
+                    yield key, self._find_field_for_column(remote, remote_primary_key_column)[0]
+        
     
     def _find_field_for_column(self, cls, column):
         for key, field in self._get_simple_fields(cls):

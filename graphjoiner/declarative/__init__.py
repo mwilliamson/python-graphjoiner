@@ -79,7 +79,7 @@ def many(target):
 class RelationshipDefinition(FieldDefinition):
     def __init__(self, func, target):
         self._func = func
-        self._target = target
+        self._get_target = target
         self._value = None
         self._args = []
     
@@ -89,6 +89,13 @@ class RelationshipDefinition(FieldDefinition):
             self._value = self._instantiate()
         
         return self._value
+    
+    @property
+    def _target(self):
+        if hasattr(self._get_target, "_graphjoiner"):
+            return self._get_target
+        else:
+            return self._get_target()
     
     def _instantiate(self):
         def generate_select(args, parent_select):

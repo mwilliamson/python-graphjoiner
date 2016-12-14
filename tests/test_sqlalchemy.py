@@ -39,8 +39,8 @@ def evaluate(func):
 class Author(object):
     id = field(column=AuthorRecord.c_id)
     name = field(column=AuthorRecord.c_name)
-    books = lambda: many(Book)
-    book_titles = lambda: extract(books, "title")
+    books = many(lambda: Book)
+    book_titles = extract(books, "title")
 
 
 @sqlalchemy_join_type(BookRecord)
