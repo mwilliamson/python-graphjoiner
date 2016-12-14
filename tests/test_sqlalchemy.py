@@ -15,15 +15,15 @@ Base = declarative_base()
 class AuthorRecord(Base):
     __tablename__ = "author"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(Unicode, nullable=False)
+    c_id = Column(Integer, primary_key=True)
+    c_name = Column(Unicode, nullable=False)
 
 class BookRecord(Base):
     __tablename__ = "book"
 
-    id = Column(Integer, primary_key=True)
-    title = Column(Unicode, nullable=False)
-    author_id = Column(Integer, ForeignKey(AuthorRecord.id))
+    c_id = Column(Integer, primary_key=True)
+    c_title = Column(Unicode, nullable=False)
+    c_author_id = Column(Integer, ForeignKey(AuthorRecord.c_id))
 
 
 class QueryContext(object):
@@ -37,17 +37,17 @@ def evaluate(func):
 
 @sqlalchemy_join_type(AuthorRecord)
 class Author(object):
-    id = field(column=AuthorRecord.id)
-    name = field(column=AuthorRecord.name)
+    id = field(column=AuthorRecord.c_id)
+    name = field(column=AuthorRecord.c_name)
     books = lambda: many(Book)
     book_titles = lambda: extract(books, "title")
 
 
 @sqlalchemy_join_type(BookRecord)
 class Book(object):
-    id = field(column=BookRecord.id)
-    title = field(column=BookRecord.title)
-    author_id = field(column=BookRecord.author_id)
+    id = field(column=BookRecord.c_id)
+    title = field(column=BookRecord.c_title)
+    author_id = field(column=BookRecord.c_author_id)
     author = single(Author)
     books_by_same_author = extract(author, "books")
 
@@ -75,11 +75,11 @@ class TestGraphJoinerSqlAlchemy(ExecutionTestCases):
         Base.metadata.create_all(engine)
 
         session = Session(engine)
-        session.add(AuthorRecord(name="PG Wodehouse"))
-        session.add(AuthorRecord(name="Joseph Heller"))
-        session.add(BookRecord(title="Leave It to Psmith", author_id=1))
-        session.add(BookRecord(title="Right Ho, Jeeves", author_id=1))
-        session.add(BookRecord(title="Catch-22", author_id=2))
+        session.add(AuthorRecord(c_name="PG Wodehouse"))
+        session.add(AuthorRecord(c_name="Joseph Heller"))
+        session.add(BookRecord(c_title="Leave It to Psmith", c_author_id=1))
+        session.add(BookRecord(c_title="Right Ho, Jeeves", c_author_id=1))
+        session.add(BookRecord(c_title="Catch-22", c_author_id=2))
 
         session.commit()
         

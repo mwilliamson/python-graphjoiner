@@ -13,10 +13,18 @@ def executor(root):
 
 
 def root_join_type(cls):
-    return create_join_type(cls, fetch_immediates=lambda *_: [{}], joiner=None)
+    return create_join_type(cls, joiner=RootJoiner())
 
 
-def create_join_type(cls, fetch_immediates, joiner):
+class RootJoiner(object):
+    def fetch_immediates(self, *args):
+        return [{}]
+    
+    def join_to(self, target):
+        return {}
+
+
+def create_join_type(cls, joiner):
     def fields():
         # TODO: snake_case to camelCase
         return dict(
@@ -28,7 +36,7 @@ def create_join_type(cls, fetch_immediates, joiner):
     cls._graphjoiner = graphjoiner.JoinType(
         name=cls.__name__,
         fields=fields,
-        fetch_immediates=fetch_immediates,
+        fetch_immediates=joiner.fetch_immediates,
     )
     cls._joiner = joiner
     
@@ -75,6 +83,7 @@ class RelationshipDefinition(FieldDefinition):
     
     def __get__(self, obj, type=None):
         if self._value is None:
+            self._owner = type
             self._value = self._instantiate()
         
         return self._value
@@ -86,6 +95,8 @@ class RelationshipDefinition(FieldDefinition):
         return self._func(
             self._target._graphjoiner,
             select=generate_select,
+            # TODO: in general join selection needs to consider both sides of the relationship
+            join=self._owner._joiner.join_to(self._target),
         )
         
     def arg(self, arg_name, arg_type):
