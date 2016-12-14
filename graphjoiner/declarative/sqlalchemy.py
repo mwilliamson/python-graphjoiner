@@ -65,13 +65,15 @@ class SqlAlchemyJoiner(object):
         
     
     def fetch_immediates(self, selections, query, context):
-        # TODO: add primary keys
         query = query.with_entities(*(
             selection.field.column
             for selection in selections
         ))
+        for primary_key_column in self._model.__mapper__.primary_key:
+            query = query.add_columns(primary_key_column)
         keys = tuple(selection.key for selection in selections)
+        
         return [
             dict(zip(keys, row))
-            for row in query.with_session(context.session).all()
+            for row in query.distinct().with_session(context.session).all()
         ]
