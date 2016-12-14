@@ -44,24 +44,25 @@ class SqlAlchemyJoiner(object):
             yield local_field, target_field
     
     def _find_join_candidates_directional(self, local, remote):
-        for key, field in self._get_simple_fields(local):
-            column, = field.column.property.columns
+        for field_definition in self._get_simple_field_definitions(local):
+            column, = field_definition._kwargs["column"].property.columns
             for foreign_key in column.foreign_keys:
                 if remote._joiner._model.__table__ == foreign_key.column.table:
                     remote_primary_key_column, = foreign_key.column.table.primary_key
-                    yield key, self._find_field_for_column(remote, remote_primary_key_column)[0]
+                    remote_field = self._find_field_for_column(remote, remote_primary_key_column)
+                    yield field_definition.field_name, remote_field.field_name
         
     
     def _find_field_for_column(self, cls, column):
-        for key, field in self._get_simple_fields(cls):
-            if field.column == column:
-                return key, field
+        for field_definition in self._get_simple_field_definitions(cls):
+            if field_definition._kwargs["column"] == column:
+                return field_definition
         raise Exception("Could not find find field in {} for {}".format(cls.__name__, column))
     
-    def _get_simple_fields(self, cls):
-        for key, field_definition in six.iteritems(cls.__dict__):
+    def _get_simple_field_definitions(self, cls):
+        for field_definition in six.itervalues(cls.__dict__):
             if isinstance(field_definition, declarative.SimpleFieldDefinition):
-                yield key, getattr(cls, key)
+                yield field_definition
         
     
     def fetch_immediates(self, selections, query, context):

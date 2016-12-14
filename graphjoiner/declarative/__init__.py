@@ -1,3 +1,5 @@
+import re
+
 from graphql import GraphQLArgument
 import six
 
@@ -27,11 +29,10 @@ class RootJoiner(object):
 
 def create_join_type(cls, joiner):
     def fields():
-        # TODO: snake_case to camelCase
         return dict(
-            (key, getattr(cls, key))
-            for key in dir(cls)
-            if isinstance(getattr(cls, key), graphjoiner.FieldBase)
+            (field_definition.field_name, field_definition.field(cls))
+            for key, field_definition in six.iteritems(cls.__dict__)
+            if isinstance(field_definition, FieldDefinition)
         )
     
     cls._graphjoiner = graphjoiner.JoinType(
@@ -40,6 +41,10 @@ def create_join_type(cls, joiner):
         fetch_immediates=joiner.fetch_immediates,
     )
     cls._joiner = joiner
+    
+    for key, field_definition in six.iteritems(cls.__dict__):
+        if isinstance(field_definition, FieldDefinition):
+            field_definition.field_name = _snake_case_to_camel_case(key)
     
     return cls
 
@@ -58,8 +63,11 @@ class SimpleFieldDefinition(FieldDefinition):
         self._value = None
     
     def __get__(self, obj, type=None):
+        return self.field(owner=type)
+    
+    def field(self, owner):
         if self._value is None:
-            self._owner = type
+            self._owner = owner
             self._value = self._instantiate()
         
         return self._value
@@ -83,9 +91,13 @@ class RelationshipDefinition(FieldDefinition):
         self._value = None
         self._args = []
     
+    
     def __get__(self, obj, type=None):
+        return self.field(owner=type)
+    
+    def field(self, owner):
         if self._value is None:
-            self._owner = type
+            self._owner = owner
             self._value = self._instantiate()
         
         return self._value
@@ -129,3 +141,5 @@ def extract(relationship, field_name):
     pass
 
 
+def _snake_case_to_camel_case(value):
+    return value[0].lower() + re.sub(r"_(.)", lambda match: match.group(1).upper(), value[1:])
