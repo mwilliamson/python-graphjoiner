@@ -59,13 +59,13 @@ class Root(object):
     
     @book.arg("id", GraphQLInt)
     def book_id(query, book_id):
-        return query.filter(BookRecord.id == book_id)
+        return query.filter(BookRecord.c_id == book_id)
     
     author = single(Author)
     
     @author.arg("id", GraphQLInt)
     def author_id(query, author_id):
-        return query.filter(AuthorRecord.id == author_id)
+        return query.filter(AuthorRecord.c_id == author_id)
 
 
 class TestGraphJoinerSqlAlchemy(ExecutionTestCases):

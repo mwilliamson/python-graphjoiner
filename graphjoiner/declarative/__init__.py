@@ -1,3 +1,4 @@
+from graphql import GraphQLArgument
 import six
 
 import graphjoiner
@@ -80,6 +81,7 @@ class RelationshipDefinition(FieldDefinition):
         self._func = func
         self._target = target
         self._value = None
+        self._args = []
     
     def __get__(self, obj, type=None):
         if self._value is None:
@@ -90,18 +92,28 @@ class RelationshipDefinition(FieldDefinition):
     
     def _instantiate(self):
         def generate_select(args, parent_select):
-            return self._target._joiner.select()
+            select = self._target._joiner.select()
+            
+            for arg_name, _, refine_select in self._args:
+                if arg_name in args:
+                    select = refine_select(select, args[arg_name])
+            
+            return select
         
         return self._func(
             self._target._graphjoiner,
             select=generate_select,
             # TODO: in general join selection needs to consider both sides of the relationship
             join=self._owner._joiner.join_to(self._target),
+            args=dict(
+                (arg_name, GraphQLArgument(arg_type))
+                for arg_name, arg_type, _ in self._args
+            ),
         )
         
     def arg(self, arg_name, arg_type):
-        def add_arg(func):
-            pass
+        def add_arg(refine_select):
+            self._args.append((arg_name, arg_type, refine_select))
         
         return add_arg
     
