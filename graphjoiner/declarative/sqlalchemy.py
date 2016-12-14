@@ -29,14 +29,25 @@ class SqlAlchemyJoiner(object):
     
     def select(self):
         return Query([]).select_from(self._model)
+
+    def join_select(self, target, parent_select, child_select):
+        local_field, remote_field = self._find_foreign_key(target)
+        
+        parents = parent_select.with_entities(local_field._kwargs["column"]).subquery()
+        return child_select.join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
         
     def join_to(self, target):
+        local_field, remote_field = self._find_foreign_key(target)
+        return {local_field.field_name: remote_field.field_name}
+    
+    def _find_foreign_key(self, target):
         foreign_keys = list(self._find_join_candidates(target))
         if len(foreign_keys) == 1:
-            return dict(foreign_keys)
+            foreign_key, = foreign_keys
+            return foreign_key
         else:
             raise Exception("TODO")
-    
+        
     def _find_join_candidates(self, target):
         for local_field, target_field in self._find_join_candidates_directional(self._cls, target):
             yield local_field, target_field
@@ -50,7 +61,7 @@ class SqlAlchemyJoiner(object):
                 if remote._joiner._model.__table__ == foreign_key.column.table:
                     remote_primary_key_column, = foreign_key.column.table.primary_key
                     remote_field = self._find_field_for_column(remote, remote_primary_key_column)
-                    yield field_definition.field_name, remote_field.field_name
+                    yield field_definition, remote_field
         
     
     def _find_field_for_column(self, cls, column):

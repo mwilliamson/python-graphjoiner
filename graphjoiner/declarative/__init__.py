@@ -23,6 +23,9 @@ class RootJoiner(object):
     def fetch_immediates(self, *args):
         return [{}]
     
+    def join_select(self, target, parent_select, child_select):
+        return child_select
+    
     def join_to(self, target):
         return {}
 
@@ -112,6 +115,7 @@ class RelationshipDefinition(FieldDefinition):
     def _instantiate(self):
         def generate_select(args, parent_select):
             select = self._target._joiner.select()
+            select = self._owner._joiner.join_select(self._target, parent_select, select)
             
             for arg_name, _, refine_select in self._args:
                 if arg_name in args:
