@@ -38,13 +38,23 @@ class SqlAlchemyJoiner(object):
             raise Exception("TODO")
     
     def _find_join_candidates(self, target):
-        for key, field_definition in six.iteritems(self._cls.__dict__):
+        for key, field in self._get_simple_fields(self._cls):
+            column, = field.column.property.columns
+            for foreign_key in column.foreign_keys:
+                if target._joiner._model.__table__ == foreign_key.column.table:
+                    remote_primary_key_column, = foreign_key.column.table.primary_key
+                    yield key, self._find_field_for_column(target, remote_primary_key_column)[0]
+    
+    def _find_field_for_column(self, cls, column):
+        for key, field in self._get_simple_fields(cls):
+            if field.column == column:
+                return key, field
+        raise Exception("Could not find find field in {} for {}".format(cls.__name__, column))
+    
+    def _get_simple_fields(self, cls):
+        for key, field_definition in six.iteritems(cls.__dict__):
             if isinstance(field_definition, declarative.SimpleFieldDefinition):
-                field = getattr(self._cls, key)
-                column, = field.column.property.columns
-                for foreign_key in column.foreign_keys:
-                    if target._joiner._model.__table__ == foreign_key.column.table:
-                        yield key, foreign_key.column.name
+                yield key, getattr(cls, key)
         
     
     def fetch_immediates(self, selections, query, context):
