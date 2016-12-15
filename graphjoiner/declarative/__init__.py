@@ -23,11 +23,11 @@ class RootJoiner(object):
     def fetch_immediates(self, *args):
         return [{}]
     
-    def join_select(self, target, parent_select, child_select):
-        return child_select
-    
-    def join_to(self, target):
-        return {}
+    def relationship(self, target):
+        def select(parent_select):
+            return target._joiner.select_all()
+        
+        return select, {}
 
 
 def create_join_type(cls, joiner):
@@ -104,26 +104,24 @@ class RelationshipDefinition(FieldDefinition):
         return self._value
     
     def _instantiate(self):
-        def generate_select(args, parent_select):
-            select = self._target._joiner.select_all()
-            select = self._owner._joiner.join_select(self._target, parent_select, select)
-            
+        generate_select, join = self._owner._joiner.relationship(self._target)
+        
+        def generate_select_with_args(args, parent_select):
+            select = generate_select(parent_select)
+        
             for arg_name, _, refine_select in self._args:
                 if arg_name in args:
                     select = refine_select(select, args[arg_name])
             
             return select
         
-        return self._func(
-            self._target._graphjoiner,
-            select=generate_select,
-            # TODO: in general join selection needs to consider both sides of the relationship
-            join=self._owner._joiner.join_to(self._target),
-            args=dict(
-                (arg_name, GraphQLArgument(arg_type))
-                for arg_name, arg_type, _ in self._args
-            ),
+        args = dict(
+            (arg_name, GraphQLArgument(arg_type))
+            for arg_name, arg_type, _ in self._args
         )
+            
+        # TODO: in general join selection needs to consider both sides of the relationship
+        return self._func(self._target._graphjoiner, generate_select_with_args, join=join, args=args)
         
     def arg(self, arg_name, arg_type):
         def add_arg(refine_select):

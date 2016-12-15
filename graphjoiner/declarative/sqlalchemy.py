@@ -29,17 +29,24 @@ class SqlAlchemyJoiner(object):
     
     def select_all(self):
         return Query([]).select_from(self._model)
-
-    def join_select(self, target, parent_select, child_select):
-        local_field, remote_field = self._find_foreign_key(target)
-        
-        parents = parent_select.with_entities(local_field._kwargs["column"]).subquery()
-        return child_select.join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
-        
-    def join_to(self, target):
-        local_field, remote_field = self._find_foreign_key(target)
-        return {local_field.field_name: remote_field.field_name}
     
+    def relationship(self, target):
+        local_field, remote_field = self._find_foreign_key(target)
+        
+        def select(parent_select):
+            parents = parent_select \
+                .with_entities(local_field._kwargs["column"]) \
+                .subquery()
+                
+            return Query([]) \
+                .select_from(self._model) \
+                .join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
+
+        
+        join = {local_field.field_name: remote_field.field_name}
+        
+        return select, join
+
     def _find_foreign_key(self, target):
         foreign_keys = list(self._find_join_candidates(target))
         if len(foreign_keys) == 1:
