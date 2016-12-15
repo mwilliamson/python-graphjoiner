@@ -33,7 +33,7 @@ class RootJoiner(object):
 def create_join_type(cls, joiner):
     def fields():
         return dict(
-            (field_definition.field_name, field_definition.field(cls))
+            (field_definition.field_name, field_definition.__get__(None, cls))
             for key, field_definition in six.iteritems(cls.__dict__)
             if isinstance(field_definition, FieldDefinition)
         )
@@ -53,7 +53,13 @@ def create_join_type(cls, joiner):
 
 
 class FieldDefinition(object):
-    pass
+    _owner = None
+    
+    def __get__(self, obj, type=None):
+        if self._owner is None:
+            self._owner = type
+            
+        return self.field()
 
 
 def field(**kwargs):
@@ -65,12 +71,8 @@ class SimpleFieldDefinition(FieldDefinition):
         self._kwargs = kwargs
         self._value = None
     
-    def __get__(self, obj, type=None):
-        return self.field(owner=type)
-    
-    def field(self, owner):
+    def field(self):
         if self._value is None:
-            self._owner = owner
             self._value = self._instantiate()
         
         return self._value
@@ -94,13 +96,8 @@ class RelationshipDefinition(FieldDefinition):
         self._value = None
         self._args = []
     
-    
-    def __get__(self, obj, type=None):
-        return self.field(owner=type)
-    
-    def field(self, owner):
+    def field(self):
         if self._value is None:
-            self._owner = owner
             self._value = self._instantiate()
         
         return self._value
