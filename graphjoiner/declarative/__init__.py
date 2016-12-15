@@ -93,7 +93,7 @@ def many(target):
 class RelationshipDefinition(FieldDefinition):
     def __init__(self, func, target):
         self._func = func
-        self._get_target = target
+        self._target = target
         self._value = None
         self._args = []
     
@@ -102,13 +102,6 @@ class RelationshipDefinition(FieldDefinition):
             self._value = self._instantiate()
         
         return self._value
-    
-    @property
-    def _target(self):
-        if hasattr(self._get_target, "_graphjoiner"):
-            return self._get_target
-        else:
-            return self._get_target()
     
     def _instantiate(self):
         def generate_select(args, parent_select):
@@ -150,7 +143,23 @@ class ExtractFieldDefinition(FieldDefinition):
     
     def field(self):
         return graphjoiner.extract(self._relationship.field(), self._field_name)
+
+
+def lazy_field(func):
+    return LazyFieldDefinition(func=func)
         
+        
+class LazyFieldDefinition(FieldDefinition):
+    def __init__(self, func):
+        self._func = func
+        self._value = None
+    
+    def field(self):
+        if self._value is None:
+            field_definition = self._func()
+            self._value = field_definition.__get__(None, self._owner)
+            
+        return self._value
 
 
 def _snake_case_to_camel_case(value):
