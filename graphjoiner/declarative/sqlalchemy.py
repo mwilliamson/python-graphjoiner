@@ -27,7 +27,7 @@ class SqlAlchemyJoiner(object):
         # TODO: SQLAlchemy type to GraphQL type
         return graphjoiner.field(column=column, type=None)
     
-    def select(self):
+    def select_all(self):
         return Query([]).select_from(self._model)
 
     def join_select(self, target, parent_select, child_select):

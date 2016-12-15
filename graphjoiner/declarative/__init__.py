@@ -105,7 +105,7 @@ class RelationshipDefinition(FieldDefinition):
     
     def _instantiate(self):
         def generate_select(args, parent_select):
-            select = self._target._joiner.select()
+            select = self._target._joiner.select_all()
             select = self._owner._joiner.join_select(self._target, parent_select, select)
             
             for arg_name, _, refine_select in self._args:
