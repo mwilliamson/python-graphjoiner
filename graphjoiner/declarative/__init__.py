@@ -48,6 +48,7 @@ def create_join_type(cls, joiner):
     for key, field_definition in six.iteritems(cls.__dict__):
         if isinstance(field_definition, FieldDefinition):
             field_definition.field_name = _snake_case_to_camel_case(key)
+            field_definition._owner = cls
     
     return cls
 
@@ -139,7 +140,17 @@ class RelationshipDefinition(FieldDefinition):
     
 
 def extract(relationship, field_name):
-    pass
+    return ExtractFieldDefinition(relationship, field_name)
+
+
+class ExtractFieldDefinition(FieldDefinition):
+    def __init__(self, relationship, field_name):
+        self._relationship = relationship
+        self._field_name = field_name
+    
+    def field(self):
+        return graphjoiner.extract(self._relationship.field(), self._field_name)
+        
 
 
 def _snake_case_to_camel_case(value):
