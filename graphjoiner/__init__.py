@@ -99,7 +99,6 @@ class Relationship(object):
 
     def fetch(self, request, select_parent):
         select = self.select(request.args, select_parent)
-        fields = self.target.fields()
         join_fields = self.target.join_fields()
         join_selections = [
             Request(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
@@ -108,7 +107,6 @@ class Relationship(object):
 
         child_request = assoc(request, join_selections=join_selections)
         results = self.target.fetch(child_request, select)
-        key_func = lambda result: result.join_values
         return RelationshipResults(
             results=results,
             process_results=self._process_results,
@@ -239,8 +237,6 @@ class JoinType(Value):
         return self.fields()
 
     def fetch(self, request, select):
-        fields = self.fields()
-
         (relationship_selections, requested_immediate_selections) = partition(
             lambda selection: isinstance(selection.field, Relationship),
             request.selections,
