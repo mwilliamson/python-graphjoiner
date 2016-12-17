@@ -60,7 +60,7 @@ class SqlAlchemyJoiner(object):
                 .subquery()
                 
             return Query([]) \
-                .select_from(self._model) \
+                .select_from(target._joiner._model) \
                 .join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
 
         
