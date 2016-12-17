@@ -88,12 +88,8 @@ We then define object types for the root, books and authors:
             selection.field.column_name
             for selection in selections
         ))
-        keys = tuple(selection.key for selection in selections)
 
-        return [
-            dict(zip(keys, row))
-            for row in query.with_session(context.session).all()
-        ]
+        return query.with_session(context.session).all()
 
     def create_book_join_type():
         def fields():
@@ -270,12 +266,8 @@ original GraphQL query, or are required as part of the join.
             fields[selection.field_name].column_name
             for selection in selections
         ))
-        keys = tuple(selection.key for selection in selections)
 
-        return [
-            dict(zip(keys, row))
-            for row in query.with_session(context.session).all()
-        ]
+        return query.with_session(context.session).all()
 
 For completeness, we can tweak the definition of ``author_join_type`` so
 we can request the books by an author:

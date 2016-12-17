@@ -36,12 +36,8 @@ def fetch_immediates_from_query(model):
             getattr(model, selection.field.column_name)
             for selection in selections
         ))
-        keys = tuple(selection.key for selection in selections)
 
-        return [
-            dict(zip(keys, row))
-            for row in query.with_session(context.session).all()
-        ]
+        return query.with_session(context.session).all()
 
     return fetch_immediates_from_query
 

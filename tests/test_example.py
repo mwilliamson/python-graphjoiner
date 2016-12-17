@@ -71,12 +71,8 @@ def test_example():
             selection.field.column_name
             for selection in selections
         ))
-        keys = tuple(selection.key for selection in selections)
 
-        return [
-            dict(zip(keys, row))
-            for row in query.with_session(context.session).all()
-        ]
+        return query.with_session(context.session).all()
 
     def create_book_join_type():
         def fields():

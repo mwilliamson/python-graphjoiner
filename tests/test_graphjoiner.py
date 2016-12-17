@@ -33,13 +33,13 @@ all_books = [
 
 
 def fetch_immediates_from_obj(selections, objs, context):
-    requested_fields = [
-        (selection.key, selection.field.attr)
+    requested_attrs = [
+        selection.field.attr
         for selection in selections
     ]
 
     def read_obj(obj):
-        return dict((key, getattr(obj, attr)) for (key, attr) in requested_fields)
+        return [getattr(obj, attr) for attr in requested_attrs]
 
     return list(map(read_obj, objs))
 

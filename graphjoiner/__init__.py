@@ -257,7 +257,13 @@ class JoinType(Value):
             key=lambda selection: selection.key,
         )
 
-        results = self.fetch_immediates(immediate_selections, select, request.context)
+
+        keys = tuple(selection.key for selection in immediate_selections)
+        
+        results = [
+            dict(zip(keys, row))
+            for row in self.fetch_immediates(immediate_selections, select, request.context)
+        ]
 
         for selection in relationship_selections:
             children = selection.field.fetch(selection, select)
