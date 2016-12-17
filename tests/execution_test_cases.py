@@ -191,6 +191,26 @@ class ExecutionTestCases(object):
         }))
 
 
+    def test_can_alias_same_scalar_field_multiple_times(self):
+        query = """
+            {
+                author(id: 1) {
+                    authorName: name
+                    name: name
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, equal_to({
+            "author": {
+                "authorName": "PG Wodehouse",
+                "name": "PG Wodehouse",
+            },
+        }))
+
+
     def test_top_level_relationship_field_aliases(self):
         query = """
             {
