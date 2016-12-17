@@ -15,7 +15,7 @@ def executor(root):
     return execute
 
 
-def root_join_type(cls):
+def root_type(cls):
     return create_join_type(cls, joiner=RootJoiner())
 
 

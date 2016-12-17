@@ -8,7 +8,7 @@ from graphjoiner import declarative
 from . import create_join_type
 
 
-def sqlalchemy_join_type(model):
+def sqlalchemy_object_type(model):
     def create(cls):
         return create_join_type(
             cls,

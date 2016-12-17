@@ -5,8 +5,8 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
-from graphjoiner.declarative import executor, extract, field, single, many, root_join_type, lazy_field
-from graphjoiner.declarative.sqlalchemy import sqlalchemy_join_type
+from graphjoiner.declarative import executor, extract, field, single, many, root_type, lazy_field
+from graphjoiner.declarative.sqlalchemy import sqlalchemy_object_type
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -35,7 +35,7 @@ def evaluate(func):
     return func()
 
 
-@sqlalchemy_join_type(AuthorRecord)
+@sqlalchemy_object_type(AuthorRecord)
 class Author(object):
     id = field(column=AuthorRecord.c_id)
     name = field(column=AuthorRecord.c_name)
@@ -43,7 +43,7 @@ class Author(object):
     book_titles = extract(books, "title")
 
 
-@sqlalchemy_join_type(BookRecord)
+@sqlalchemy_object_type(BookRecord)
 class Book(object):
     id = field(column=BookRecord.c_id)
     title = field(column=BookRecord.c_title)
@@ -52,7 +52,7 @@ class Book(object):
     books_by_same_author = extract(author, "books")
 
 
-@root_join_type
+@root_type
 class Root(object):
     books = many(Book)
     book = single(Book)
