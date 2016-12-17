@@ -6,8 +6,8 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
-from graphjoiner.declarative import executor, extract, field, single, many, root_type, lazy_field, object_type
-from graphjoiner.declarative.sqlalchemy import sqlalchemy_object_type
+from graphjoiner.declarative import executor, extract, field, single, many, RootType, lazy_field, ObjectType
+from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -37,16 +37,18 @@ def evaluate(func):
     return func()
 
 
-@sqlalchemy_object_type(AuthorRecord)
-class Author(object):
+class Author(SqlAlchemyObjectType):
+    __model__ = AuthorRecord
+    
     id = field(column=AuthorRecord.c_id)
     name = field(column=AuthorRecord.c_name)
     books = lazy_field(lambda: many(Book))
     book_titles = extract(books, "title")
 
 
-@sqlalchemy_object_type(BookRecord)
-class Book(object):
+class Book(SqlAlchemyObjectType):
+    __model__ = BookRecord
+    
     id = field(column=BookRecord.c_id)
     title = field(column=BookRecord.c_title)
     author_id = field(column=BookRecord.c_author_id)
@@ -56,8 +58,7 @@ class Book(object):
     sales = lazy_field(lambda: single(Sales, {Book.title: Sales.book_title}))
 
 
-@object_type
-class Sales(object):
+class Sales(ObjectType):
     book_title = field(property_name="title", type=GraphQLString)
     quantity = field(property_name="quantity", type=GraphQLInt)
     
@@ -70,8 +71,7 @@ class Sales(object):
         )
 
 
-@root_type
-class Root(object):
+class Root(RootType):
     books = many(Book)
     book = single(Book)
     

@@ -7,7 +7,7 @@ import graphjoiner
 
 
 def executor(root):
-    root_type = root._graphjoiner
+    root_type = root.__graphjoiner__
     
     def execute(*args, **kwargs):
         return graphjoiner.execute(root_type, *args, **kwargs)
@@ -15,59 +15,55 @@ def executor(root):
     return execute
 
 
-def root_type(cls):
-    return create_join_type(cls, joiner=RootJoiner())
-
-
-class RootJoiner(object):
-    def fetch_immediates(self, *args):
-        return [()]
-    
-    def relationship(self, target, join):
-        def select(parent_select, context):
-            return target._joiner.select_all()
+class ObjectTypeMeta(type):
+    def __new__(meta, name, bases, attrs):
+        cls = super(ObjectTypeMeta, meta).__new__(meta, name, bases, attrs)
+        if attrs.get("__abstract__"):
+            return cls
         
-        return select, {}
+        def fields():
+            return dict(
+                (field_definition.field_name, field_definition.__get__(None, cls))
+                for key, field_definition in six.iteritems(cls.__dict__)
+                if isinstance(field_definition, FieldDefinition)
+            )
+        
+        cls.__graphjoiner__ = graphjoiner.JoinType(
+            name=cls.__name__,
+            fields=fields,
+            fetch_immediates=cls.__fetch_immediates__,
+        )
+        
+        for key, field_definition in six.iteritems(cls.__dict__):
+            if isinstance(field_definition, FieldDefinition):
+                field_definition.attr_name = key
+                field_definition.field_name = _snake_case_to_camel_case(key)
+                field_definition._owner = cls
+        
+        return cls
+        
 
-
-def object_type(cls):
-    return create_join_type(cls, joiner=ObjectJoiner(cls))
-
-
-class ObjectJoiner(object):
-    def __init__(self, owner):
-        self._owner = owner
+class ObjectType(six.with_metaclass(ObjectTypeMeta)):
+    __abstract__ = True
     
-    def simple_field(self, **kwargs):
+    @staticmethod
+    def __field__(**kwargs):
         return graphjoiner.field(**kwargs)
 
 
-def create_join_type(cls, joiner):
-    def fields():
-        return dict(
-            (field_definition.field_name, field_definition.__get__(None, cls))
-            for key, field_definition in six.iteritems(cls.__dict__)
-            if isinstance(field_definition, FieldDefinition)
-        )
+class RootType(ObjectType):
+    __abstract__ = True
     
-    fetch_immediates = getattr(joiner, "fetch_immediates", None)
-    if fetch_immediates is not None:
-        cls.__fetch_immediates__ = fetch_immediates
+    @staticmethod
+    def __fetch_immediates__(*args):
+        return [()]
     
-    cls._graphjoiner = graphjoiner.JoinType(
-        name=cls.__name__,
-        fields=fields,
-        fetch_immediates=cls.__fetch_immediates__,
-    )
-    cls._joiner = joiner
-    
-    for key, field_definition in six.iteritems(cls.__dict__):
-        if isinstance(field_definition, FieldDefinition):
-            field_definition.attr_name = key
-            field_definition.field_name = _snake_case_to_camel_case(key)
-            field_definition._owner = cls
-    
-    return cls
+    @staticmethod
+    def __relationship__(target, join):
+        def select(parent_select, context):
+            return target.__select_all__()
+        
+        return select, {}
 
 
 class FieldDefinition(object):
@@ -98,7 +94,7 @@ class SimpleFieldDefinition(FieldDefinition):
         self._kwargs = kwargs
     
     def instantiate(self):
-        return self._owner._joiner.simple_field(**self._kwargs)
+        return self._owner.__field__(**self._kwargs)
 
 
 def single(target, join=None):
@@ -117,7 +113,7 @@ class RelationshipDefinition(FieldDefinition):
         self._args = []
     
     def instantiate(self):
-        generate_select, join = self._owner._joiner.relationship(self._target, self._join)
+        generate_select, join = self._owner.__relationship__(self._target, self._join)
         
         def generate_select_with_args(args, parent_select, context):
             select = generate_select(parent_select, context)
@@ -134,7 +130,7 @@ class RelationshipDefinition(FieldDefinition):
         )
             
         # TODO: in general join selection needs to consider both sides of the relationship
-        return self._func(self._target._graphjoiner, generate_select_with_args, join=join, args=args)
+        return self._func(self._target.__graphjoiner__, generate_select_with_args, join=join, args=args)
         
     def arg(self, arg_name, arg_type):
         def add_arg(refine_select):

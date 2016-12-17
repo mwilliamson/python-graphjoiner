@@ -5,36 +5,27 @@ from sqlalchemy.orm import Query
 
 import graphjoiner
 from graphjoiner import declarative
-from . import create_join_type
+from . import ObjectType
 
 
-def sqlalchemy_object_type(model):
-    def create(cls):
-        return create_join_type(
-            cls,
-            joiner=SqlAlchemyJoiner(cls, model),
-        )
+class SqlAlchemyObjectType(ObjectType):
+    __abstract__ = True
     
-    return create
-    
-    
-class SqlAlchemyJoiner(object):
-    def __init__(self, cls, model):
-        self._cls = cls
-        self._model = model
-    
-    def simple_field(self, column):
+    @staticmethod
+    def __field__(column):
         # TODO: SQLAlchemy type to GraphQL type
         return graphjoiner.field(column=column, type=None)
     
-    def select_all(self):
-        return Query([]).select_from(self._model)
+    @classmethod
+    def __select_all__(cls):
+        return Query([]).select_from(cls.__model__)
     
-    def relationship(self, target, join=None):
+    @classmethod
+    def __relationship__(cls, target, join=None):
         # TODO: use join when join condition is explicity set for SQLAlchemy
         if join is None:
-            if isinstance(target._joiner, SqlAlchemyJoiner):
-                return self._relationship_to_sqlalchemy(target)
+            if issubclass(target, SqlAlchemyObjectType):
+                return _relationship_to_sqlalchemy(cls, target)
             else:
                 raise Exception("join must be explicitly set when joining to non-SQLAlchemy types")
         else:
@@ -51,66 +42,67 @@ class SqlAlchemyJoiner(object):
                 for local_field, remote_field in six.iteritems(join)
             )
         
-    def _relationship_to_sqlalchemy(self, target):
-        local_field, remote_field = self._find_foreign_key(target)
-        
-        def select(parent_select, context):
-            parents = parent_select \
-                .with_entities(local_field._kwargs["column"]) \
-                .subquery()
-                
-            return Query([]) \
-                .select_from(target._joiner._model) \
-                .join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
-
-        
-        join = {local_field.field_name: remote_field.field_name}
-        
-        return select, join
-        
-
-    def _find_foreign_key(self, target):
-        foreign_keys = list(self._find_join_candidates(target))
-        if len(foreign_keys) == 1:
-            foreign_key, = foreign_keys
-            return foreign_key
-        else:
-            raise Exception("TODO")
-        
-    def _find_join_candidates(self, target):
-        for local_field, target_field in self._find_join_candidates_directional(self._cls, target):
-            yield local_field, target_field
-        for target_field, local_field in self._find_join_candidates_directional(target, self._cls):
-            yield local_field, target_field
-    
-    def _find_join_candidates_directional(self, local, remote):
-        for field_definition in self._get_simple_field_definitions(local):
-            column, = field_definition._kwargs["column"].property.columns
-            for foreign_key in column.foreign_keys:
-                if remote._joiner._model.__table__ == foreign_key.column.table:
-                    remote_primary_key_column, = foreign_key.column.table.primary_key
-                    remote_field = self._find_field_for_column(remote, remote_primary_key_column)
-                    yield field_definition, remote_field
-        
-    
-    def _find_field_for_column(self, cls, column):
-        for field_definition in self._get_simple_field_definitions(cls):
-            if field_definition._kwargs["column"] == column:
-                return field_definition
-        raise Exception("Could not find find field in {} for {}".format(cls.__name__, column))
-    
-    def _get_simple_field_definitions(self, cls):
-        for field_definition in six.itervalues(cls.__dict__):
-            if isinstance(field_definition, declarative.SimpleFieldDefinition):
-                yield field_definition
-        
-    
-    def fetch_immediates(self, selections, query, context):
+    @classmethod
+    def __fetch_immediates__(cls, selections, query, context):
         query = query.with_entities(*(
             selection.field.column
             for selection in selections
         ))
-        for primary_key_column in self._model.__mapper__.primary_key:
+        for primary_key_column in cls.__model__.__mapper__.primary_key:
             query = query.add_columns(primary_key_column)
         
         return query.distinct().with_session(context.session).all()
+        
+        
+def _relationship_to_sqlalchemy(local, target):
+    local_field, remote_field = _find_foreign_key(local, target)
+    
+    def select(parent_select, context):
+        parents = parent_select \
+            .with_entities(local_field._kwargs["column"]) \
+            .subquery()
+            
+        return Query([]) \
+            .select_from(target.__model__) \
+            .join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
+
+    
+    join = {local_field.field_name: remote_field.field_name}
+    
+    return select, join
+    
+
+def _find_foreign_key(local, target):
+    foreign_keys = list(_find_join_candidates(local, target))
+    if len(foreign_keys) == 1:
+        foreign_key, = foreign_keys
+        return foreign_key
+    else:
+        raise Exception("TODO")
+    
+def _find_join_candidates(local, target):
+    for local_field, target_field in _find_join_candidates_directional(local, target):
+        yield local_field, target_field
+    for target_field, local_field in _find_join_candidates_directional(target, local):
+        yield local_field, target_field
+
+def _find_join_candidates_directional(local, remote):
+    for field_definition in _get_simple_field_definitions(local):
+        column, = field_definition._kwargs["column"].property.columns
+        for foreign_key in column.foreign_keys:
+            if remote.__model__.__table__ == foreign_key.column.table:
+                remote_primary_key_column, = foreign_key.column.table.primary_key
+                remote_field = _find_field_for_column(remote, remote_primary_key_column)
+                yield field_definition, remote_field
+    
+
+def _find_field_for_column(cls, column):
+    for field_definition in _get_simple_field_definitions(cls):
+        if field_definition._kwargs["column"] == column:
+            return field_definition
+    raise Exception("Could not find find field in {} for {}".format(cls.__name__, column))
+
+def _get_simple_field_definitions(cls):
+    for field_definition in six.itervalues(cls.__dict__):
+        if isinstance(field_definition, declarative.SimpleFieldDefinition):
+            yield field_definition
