@@ -62,8 +62,7 @@ def _relationship_to_sqlalchemy(local, target):
             .with_entities(local_field._kwargs["column"]) \
             .subquery()
             
-        return Query([]) \
-            .select_from(target.__model__) \
+        return target.__select_all__() \
             .join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
 
     
