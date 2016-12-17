@@ -54,7 +54,7 @@ def test_example():
                 )
             }
 
-        def books_query(args, _):
+        def books_query(args, _, context):
             query = Query([]).select_from(Book)
 
             if "genre" in args:
@@ -84,7 +84,7 @@ def test_example():
                 "author": single(author_join_type, author_query, join={"authorId": "id"}),
             }
 
-        def author_query(args, book_query):
+        def author_query(args, book_query, context):
             books = book_query.with_entities(Book.author_id).distinct().subquery()
             return Query([]) \
                 .select_from(Author) \

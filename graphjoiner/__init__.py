@@ -102,7 +102,7 @@ class Relationship(FieldBase):
         ]
 
     def fetch(self, request, select_parent):
-        select = self.select(request.args, select_parent)
+        select = self.select(request.args, select_parent, request.context)
         join_fields = self.target.join_fields()
         join_selections = [
             Request(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])

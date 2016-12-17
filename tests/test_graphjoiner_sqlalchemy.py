@@ -62,7 +62,7 @@ def author_join_type():
             "bookTitles": extract(books, "title"),
         }
 
-    def book_query(args, author_query):
+    def book_query(args, author_query, context):
         authors = author_query.with_entities(Author.id).distinct().subquery()
         return Query([]) \
             .select_from(Book) \
@@ -92,7 +92,7 @@ def book_join_type():
             "booksBySameAuthor": extract(author, "books"),
         }
 
-    def author_query(args, book_query):
+    def author_query(args, book_query, context):
         books = book_query.with_entities(Book.author_id).distinct().subquery()
         return Query([]) \
             .select_from(Author) \
@@ -114,7 +114,7 @@ def root():
             "author": single(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
         }
 
-    def book_query(args, _):
+    def book_query(args, _, context):
         query = Query([]).select_from(Book)
 
         book_id = args.get("id")
@@ -123,7 +123,7 @@ def root():
 
         return query
 
-    def author_query(args, _):
+    def author_query(args, _, context):
         query = Query([]).select_from(Author)
 
         author_id = args.get("id")

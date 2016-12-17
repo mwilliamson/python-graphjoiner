@@ -103,7 +103,7 @@ def root():
             "author": single(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
         }
 
-    def book_query(args, _):
+    def book_query(args, _, context):
         books = all_books
 
         book_id = args.get("id")
@@ -112,7 +112,7 @@ def root():
 
         return books
 
-    def author_query(args, _):
+    def author_query(args, _, context):
         authors = all_authors
 
         author_id = args.get("id")

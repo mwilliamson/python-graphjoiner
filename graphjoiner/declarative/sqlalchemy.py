@@ -30,10 +30,31 @@ class SqlAlchemyJoiner(object):
     def select_all(self):
         return Query([]).select_from(self._model)
     
-    def relationship(self, target):
+    def relationship(self, target, join=None):
+        # TODO: use join when join condition is explicity set for SQLAlchemy
+        if join is None:
+            if isinstance(target._joiner, SqlAlchemyJoiner):
+                return self._relationship_to_sqlalchemy(target)
+            else:
+                raise Exception("join must be explicitly set when joining to non-SQLAlchemy types")
+        else:
+            def select(parent_select, context):
+                return parent_select.with_entities(*(
+                        local_field.column.label(remote_field.attr_name)
+                        for local_field, remote_field in six.iteritems(join)
+                    )) \
+                    .with_session(context.session) \
+                    .all()
+            
+            return select, dict(
+                (local_field.field_name, remote_field.field_name)
+                for local_field, remote_field in six.iteritems(join)
+            )
+        
+    def _relationship_to_sqlalchemy(self, target):
         local_field, remote_field = self._find_foreign_key(target)
         
-        def select(parent_select):
+        def select(parent_select, context):
             parents = parent_select \
                 .with_entities(local_field._kwargs["column"]) \
                 .subquery()
@@ -46,6 +67,7 @@ class SqlAlchemyJoiner(object):
         join = {local_field.field_name: remote_field.field_name}
         
         return select, join
+        
 
     def _find_foreign_key(self, target):
         foreign_keys = list(self._find_join_candidates(target))

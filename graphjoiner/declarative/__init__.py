@@ -23,11 +23,26 @@ class RootJoiner(object):
     def fetch_immediates(self, *args):
         return [{}]
     
-    def relationship(self, target):
-        def select(parent_select):
+    def relationship(self, target, join):
+        def select(parent_select, context):
             return target._joiner.select_all()
         
         return select, {}
+
+
+def object_type(cls):
+    return create_join_type(cls, joiner=ObjectJoiner(cls))
+
+
+class ObjectJoiner(object):
+    def __init__(self, owner):
+        self._owner = owner
+    
+    def fetch_immediates(self, selections, query, context):
+        return self._owner.__fetch_immediates__(selections, query, context)
+    
+    def simple_field(self, **kwargs):
+        return graphjoiner.field(**kwargs)
 
 
 def create_join_type(cls, joiner):
@@ -47,6 +62,7 @@ def create_join_type(cls, joiner):
     
     for key, field_definition in six.iteritems(cls.__dict__):
         if isinstance(field_definition, FieldDefinition):
+            field_definition.attr_name = key
             field_definition.field_name = _snake_case_to_camel_case(key)
             field_definition._owner = cls
     
@@ -55,12 +71,21 @@ def create_join_type(cls, joiner):
 
 class FieldDefinition(object):
     _owner = None
+    _value = None
     
     def __get__(self, obj, type=None):
         if self._owner is None:
             self._owner = type
             
         return self.field()
+    
+    def field(self):
+        if self._value is None:
+            self._value = self.instantiate()
+            self._value.field_name = self.field_name
+            self._value.attr_name = self.attr_name
+        
+        return self._value
 
 
 def field(**kwargs):
@@ -70,44 +95,31 @@ def field(**kwargs):
 class SimpleFieldDefinition(FieldDefinition):
     def __init__(self, **kwargs):
         self._kwargs = kwargs
-        self._value = None
     
-    def field(self):
-        if self._value is None:
-            self._value = self._instantiate()
-        
-        return self._value
-    
-    def _instantiate(self):
+    def instantiate(self):
         return self._owner._joiner.simple_field(**self._kwargs)
 
 
-def single(target):
-    return RelationshipDefinition(graphjoiner.single, target)
+def single(target, join=None):
+    return RelationshipDefinition(graphjoiner.single, target, join)
 
 
-def many(target):
-    return RelationshipDefinition(graphjoiner.many, target)
+def many(target, join=None):
+    return RelationshipDefinition(graphjoiner.many, target, join)
 
 
 class RelationshipDefinition(FieldDefinition):
-    def __init__(self, func, target):
+    def __init__(self, func, target, join):
         self._func = func
         self._target = target
-        self._value = None
+        self._join = join
         self._args = []
     
-    def field(self):
-        if self._value is None:
-            self._value = self._instantiate()
+    def instantiate(self):
+        generate_select, join = self._owner._joiner.relationship(self._target, self._join)
         
-        return self._value
-    
-    def _instantiate(self):
-        generate_select, join = self._owner._joiner.relationship(self._target)
-        
-        def generate_select_with_args(args, parent_select):
-            select = generate_select(parent_select)
+        def generate_select_with_args(args, parent_select, context):
+            select = generate_select(parent_select, context)
         
             for arg_name, _, refine_select in self._args:
                 if arg_name in args:
@@ -139,7 +151,7 @@ class ExtractFieldDefinition(FieldDefinition):
         self._relationship = relationship
         self._field_name = field_name
     
-    def field(self):
+    def instantiate(self):
         return graphjoiner.extract(self._relationship.field(), self._field_name)
 
 
@@ -152,12 +164,11 @@ class LazyFieldDefinition(FieldDefinition):
         self._func = func
         self._value = None
     
-    def field(self):
-        if self._value is None:
-            field_definition = self._func()
-            self._value = field_definition.__get__(None, self._owner)
-            
-        return self._value
+    def instantiate(self):
+        field_definition = self._func()
+        field_definition.field_name = self.field_name
+        field_definition.attr_name = self.attr_name
+        return field_definition.__get__(None, self._owner)
 
 
 def _snake_case_to_camel_case(value):
