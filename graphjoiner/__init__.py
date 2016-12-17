@@ -292,4 +292,4 @@ class JoinType(Value):
 
 
 def RootJoinType(**kwargs):
-    return JoinType(fetch_immediates=lambda *_: [{}], **kwargs)
+    return JoinType(fetch_immediates=lambda *_: [()], **kwargs)

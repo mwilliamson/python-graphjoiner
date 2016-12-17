@@ -21,7 +21,7 @@ def root_type(cls):
 
 class RootJoiner(object):
     def fetch_immediates(self, *args):
-        return [{}]
+        return [()]
     
     def relationship(self, target, join):
         def select(parent_select, context):
