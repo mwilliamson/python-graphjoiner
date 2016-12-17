@@ -38,9 +38,6 @@ class ObjectJoiner(object):
     def __init__(self, owner):
         self._owner = owner
     
-    def fetch_immediates(self, selections, query, context):
-        return self._owner.__fetch_immediates__(selections, query, context)
-    
     def simple_field(self, **kwargs):
         return graphjoiner.field(**kwargs)
 
@@ -53,10 +50,14 @@ def create_join_type(cls, joiner):
             if isinstance(field_definition, FieldDefinition)
         )
     
+    fetch_immediates = getattr(joiner, "fetch_immediates", None)
+    if fetch_immediates is not None:
+        cls.__fetch_immediates__ = fetch_immediates
+    
     cls._graphjoiner = graphjoiner.JoinType(
         name=cls.__name__,
         fields=fields,
-        fetch_immediates=joiner.fetch_immediates,
+        fetch_immediates=cls.__fetch_immediates__,
     )
     cls._joiner = joiner
     
