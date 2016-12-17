@@ -226,8 +226,8 @@ class ScalarJoinType(Value):
 
 class JoinType(Value):
     def __init__(self, name, fetch_immediates, fields):
-        self.name = name
-        self.fetch_immediates = fetch_immediates
+        self._name = name
+        self._fetch_immediates = fetch_immediates
         self._generate_fields = fields
         self._fields = None
         self._graphql_type = None
@@ -262,7 +262,7 @@ class JoinType(Value):
         
         results = [
             dict(zip(keys, row))
-            for row in self.fetch_immediates(immediate_selections, select, request.context)
+            for row in self._fetch_immediates(immediate_selections, select, request.context)
         ]
 
         for selection in relationship_selections:
@@ -281,7 +281,7 @@ class JoinType(Value):
     def to_graphql_type(self):
         if self._graphql_type is None:
             self._graphql_type = GraphQLObjectType(
-                name=self.name,
+                name=self._name,
                 fields=lambda: dict(
                     (name, field.to_graphql_field())
                     for name, field in six.iteritems(self.fields())
