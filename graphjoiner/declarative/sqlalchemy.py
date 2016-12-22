@@ -10,24 +10,22 @@ from . import ObjectType
 
 class SqlAlchemyObjectType(ObjectType):
     __abstract__ = True
-    
+
     @staticmethod
     def __field__(column):
         # TODO: SQLAlchemy type to GraphQL type
         return graphjoiner.field(column=column, type=None)
-    
+
     @classmethod
     def __select_all__(cls):
         return Query([]).select_from(cls.__model__)
-    
+
     @classmethod
     def __relationship__(cls, target, join=None):
-        # TODO: use join when join condition is explicity set for SQLAlchemy
-        if join is None:
-            if issubclass(target, SqlAlchemyObjectType):
-                return _relationship_to_sqlalchemy(cls, target)
-            else:
-                raise Exception("join must be explicitly set when joining to non-SQLAlchemy types")
+        if issubclass(target, SqlAlchemyObjectType):
+            return _relationship_to_sqlalchemy(cls, target, join=join)
+        elif join is None:
+            raise Exception("join must be explicitly set when joining to non-SQLAlchemy types")
         else:
             def select(parent_select, context):
                 return parent_select.with_entities(*(
@@ -36,12 +34,12 @@ class SqlAlchemyObjectType(ObjectType):
                     )) \
                     .with_session(context.session) \
                     .all()
-            
+
             return select, dict(
                 (local_field.field_name, remote_field.field_name)
                 for local_field, remote_field in six.iteritems(join)
             )
-        
+
     @classmethod
     def __fetch_immediates__(cls, selections, query, context):
         query = query.with_entities(*(
@@ -50,26 +48,31 @@ class SqlAlchemyObjectType(ObjectType):
         ))
         for primary_key_column in cls.__model__.__mapper__.primary_key:
             query = query.add_columns(primary_key_column)
-        
+
         return query.distinct().with_session(context.session).all()
-        
-        
-def _relationship_to_sqlalchemy(local, target):
-    local_field, remote_field = _find_foreign_key(local, target)
-    
+
+
+def _relationship_to_sqlalchemy(local, target, join):
+    if join is None:
+        local_field_definition, remote_field_definition = _find_foreign_key(local, target)
+        local_field = local_field_definition.field()
+        remote_field = remote_field_definition.field()
+    else:
+        (local_field, remote_field), = join.items()
+
     def select(parent_select, context):
         parents = parent_select \
-            .with_entities(local_field._kwargs["column"]) \
+            .with_entities(local_field.column) \
             .subquery()
-            
-        return target.__select_all__() \
-            .join(parents, parents.c.values()[0] == remote_field._kwargs["column"])
 
-    
+        return target.__select_all__() \
+            .join(parents, parents.c.values()[0] == remote_field.column)
+
+
     join = {local_field.field_name: remote_field.field_name}
-    
+
     return select, join
-    
+
 
 def _find_foreign_key(local, target):
     foreign_keys = list(_find_join_candidates(local, target))
@@ -78,7 +81,7 @@ def _find_foreign_key(local, target):
         return foreign_key
     else:
         raise Exception("TODO")
-    
+
 def _find_join_candidates(local, target):
     for local_field, target_field in _find_join_candidates_directional(local, target):
         yield local_field, target_field
@@ -93,7 +96,7 @@ def _find_join_candidates_directional(local, remote):
                 remote_primary_key_column, = foreign_key.column.table.primary_key
                 remote_field = _find_field_for_column(remote, remote_primary_key_column)
                 yield field_definition, remote_field
-    
+
 
 def _find_field_for_column(cls, column):
     for field_definition in _get_simple_field_definitions(cls):
