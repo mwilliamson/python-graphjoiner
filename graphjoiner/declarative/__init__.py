@@ -100,6 +100,10 @@ class SimpleFieldDefinition(FieldDefinition):
         return self._owner.__field__(**self._kwargs)
 
 
+def first_or_none(target, join=None):
+    return RelationshipDefinition(graphjoiner.first_or_none, target, join)
+
+
 def single(target, join=None):
     return RelationshipDefinition(graphjoiner.single, target, join)
 

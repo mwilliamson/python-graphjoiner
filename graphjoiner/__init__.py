@@ -176,6 +176,23 @@ def _one_or_none(values):
         return values[0]
 
 
+def first_or_none(target, select, **kwargs):
+    return relationship(
+        target=target,
+        select=select,
+        process_results=_first_or_none,
+        wrap_type=lambda graphql_type: graphql_type,
+        **kwargs
+    )
+
+
+def _first_or_none(values):
+    if len(values) == 0:
+        return None
+    else:
+        return values[0]
+
+
 def many(target, select, **kwargs):
     return relationship(
         target=target,
@@ -259,7 +276,7 @@ class JoinType(Value):
 
 
         keys = tuple(selection.key for selection in immediate_selections)
-        
+
         results = [
             dict(zip(keys, row))
             for row in self._fetch_immediates(immediate_selections, select, request.context)
