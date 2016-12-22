@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from attr import attrs, attrib
 from graphql import graphql, GraphQLSchema, GraphQLInt, GraphQLString, GraphQLArgument
 

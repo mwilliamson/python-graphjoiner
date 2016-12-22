@@ -1,10 +1,8 @@
-from datetime import datetime
-
-from graphql import GraphQLInt, GraphQLString, GraphQLArgument
+from graphql import GraphQLInt, GraphQLString
 from hamcrest import assert_that, equal_to
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, Query
+from sqlalchemy.orm import Session
 
 from graphjoiner.declarative import executor, extract, field, single, many, RootType, lazy_field, ObjectType
 from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
@@ -39,7 +37,7 @@ def evaluate(func):
 
 class Author(SqlAlchemyObjectType):
     __model__ = AuthorRecord
-    
+
     id = field(column=AuthorRecord.c_id)
     name = field(column=AuthorRecord.c_name)
     books = lazy_field(lambda: many(Book))
@@ -48,7 +46,7 @@ class Author(SqlAlchemyObjectType):
 
 class Book(SqlAlchemyObjectType):
     __model__ = BookRecord
-    
+
     id = field(column=BookRecord.c_id)
     title = field(column=BookRecord.c_title)
     author_id = field(column=BookRecord.c_author_id)
@@ -61,7 +59,7 @@ class Book(SqlAlchemyObjectType):
 class Sales(ObjectType):
     book_title = field(property_name="title", type=GraphQLString)
     quantity = field(property_name="quantity", type=GraphQLInt)
-    
+
     @staticmethod
     def __fetch_immediates__(selections, values, context):
         sales = context.api.fetch_sales(titles=[value.book_title for value in values])
@@ -74,13 +72,13 @@ class Sales(ObjectType):
 class Root(RootType):
     books = many(Book)
     book = single(Book)
-    
+
     @book.arg("id", GraphQLInt)
     def book_id(query, book_id):
         return query.filter(BookRecord.c_id == book_id)
-    
+
     author = single(Author)
-    
+
     @author.arg("id", GraphQLInt)
     def author_id(query, author_id):
         return query.filter(AuthorRecord.c_id == author_id)
@@ -99,7 +97,7 @@ def execute(query, **kwargs):
     session.add(BookRecord(c_title="Catch-22", c_author_id=2))
 
     session.commit()
-    
+
     execute = executor(Root)
 
     class Api(object):
@@ -108,7 +106,7 @@ def execute(query, **kwargs):
             "Right Ho, Jeeves": 44,
             "Catch-22": 53,
         }
-        
+
         def fetch_sales(self, titles):
             return [
                 {"title": title, "quantity": self._sales.get(title)}

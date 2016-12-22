@@ -1,6 +1,7 @@
 .PHONY: test upload clean bootstrap
 
 test:
+	_virtualenv/bin/pyflakes graphjoiner tests
 	sh -c '. _virtualenv/bin/activate; pytest tests'
 
 test-all:

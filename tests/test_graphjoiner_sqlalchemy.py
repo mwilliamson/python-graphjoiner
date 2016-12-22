@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from graphql import GraphQLInt, GraphQLString, GraphQLArgument
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
