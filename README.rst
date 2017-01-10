@@ -26,8 +26,211 @@ using joins is a natural fit for many use cases. For this specific case, we only
 need to run two queries: one to find the list of all books in the comedy genre,
 and one to get the authors of books in the comedy genre.
 
+Installation
+------------
+
+::
+
+    pip install graphjoiner
+    
 Example
 -------
+
+Let's say we have some models defined by SQLAlchemy. A book has an ID, a title,
+a genre and an author ID. An author has an ID and a name.
+
+.. code-block:: python
+
+        from sqlalchemy import Column, Integer, Unicode, ForeignKey
+        from sqlalchemy.ext.declarative import declarative_base
+
+        Base = declarative_base()
+
+        class AuthorRecord(Base):
+            __tablename__ = "author"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, nullable=False)
+
+        class BookRecord(Base):
+            __tablename__ = "book"
+
+            id = Column(Integer, primary_key=True)
+            title = Column(Unicode, nullable=False)
+            genre = Column(Unicode, nullable=False)
+            author_id = Column(Integer, ForeignKey(AuthorRecord.id))
+
+We then define object types for the root, books and authors:
+
+.. code-block:: python
+
+    from graphql import GraphQLString
+    from graphjoiner.declarative import RootType, single, many, field
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+        
+        id = field(column=AuthorRecord.id)
+        name = field(column=AuthorRecord.name)
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+        
+        id = field(column=BookRecord.id)
+        title = field(column=BookRecord.title)
+        genre = field(column=BookRecord.genre)
+        author_id = field(column=BookRecord.author_id)
+        author = single(Author)
+
+    class Root(RootType):
+        books = many(Book)
+        
+        @books.arg("genre", GraphQLString)
+        def books_arg_genre(query, genre):
+            return query.filter(BookRecord.genre == genre)
+
+We create an `execute()` function by calling ``executor()`` with our ``Root``:
+
+.. code-block:: python
+
+    from graphjoiner.declarative import executor
+
+    execute = executor(Root)
+
+``execute`` can then be used to execute queries:
+
+.. code-block:: python
+
+    query = """
+        {
+            books(genre: "comedy") {
+                title
+                author {
+                    name
+                }
+            }
+        }
+    """
+
+    class Context(object):
+        def __init__(self, session):
+            self.session = session
+
+    execute(root, query, context=Context(session))
+
+
+Which produces:
+
+::
+
+    {
+        "books": [
+            {
+                "title": "Leave It to Psmith",
+                "author": {
+                    "name": "PG Wodehouse"
+                }
+            },
+            {
+                "title": "Right Ho, Jeeves",
+                "author": {
+                    "name": "PG Wodehouse"
+                }
+            },
+            {
+                "title": "Catch-22",
+                "author": {
+                    "name": "Joseph Heller"
+                }
+            },
+        ]
+    }
+
+Let's break things down a little, starting with the definition of the root object:
+
+.. code-block:: python
+
+    class Root(RootType):
+        books = many(Book)
+        
+        @books.arg("genre", GraphQLString)
+        def books_arg_genre(query, genre):
+            return query.filter(BookRecord.genre == genre)
+
+For each object type, we need to define its fields.
+The root has only one field, ``books``, a one-to-many relationship,
+which we define using ``many()``.
+The first argument, ``Book``,
+is the type we're defining a relationship to.
+
+By default, a relationship from a root will select all possible instances.
+In this case, this means that ``books`` represents all of the books in the database.
+
+Using ``books.arg()`` adds an optional argument to the field.
+
+Since we use it in ``Root``, we need to define ``Book``:
+
+.. code-block:: python
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+        
+        id = field(column=BookRecord.id)
+        title = field(column=BookRecord.title)
+        genre = field(column=BookRecord.genre)
+        author_id = field(column=BookRecord.author_id)
+        author = single(Author)
+
+When defining object types that represent SQLAlchemy models,
+we can inherit from ``SqlAlchemyObjectType``,
+with the ``__model__`` attribute set to the appropriate model.
+
+Fields that can be fetched without further joining can be defined using ``field()``.
+The arguments that it accepts will depend on the object type.
+For SQLAlchemy object types, we pass in the column that the field should correspond to.
+
+The ``author`` field is defined as a one-to-one mapping from book to author.
+GraphJoiner will automatically inspect ``BookRecord`` and ``AuthorRecord``
+and use the foreign keys to determine how they should be joined together.
+To override this behaviour, you can pass in an explicit ``join`` argument:
+
+.. code-block:: python
+
+    author_id = field(column=BookRecord.author_id)
+    author = single(Author, {author_id: Author.id})
+
+This explicitly tells GraphJoiner that authors can be joined to books
+by equality between ``Book.author_id`` and ``Author.id``.
+
+For completeness, we can tweak the definition of ``Author`` so
+we can request the books by an author:
+
+.. code-block:: python
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+        
+        id = field(column=AuthorRecord.id)
+        name = field(column=AuthorRecord.name)
+        books = lazy_field(lambda: many(Book))
+        
+
+Since ``Author`` is defined ``Book``,
+we cannot refer to ``Book`` directly.
+Instead, we wrap the definition of the field inside a lambda passed to ``lazy_field()``,
+which defers the evaluation of the field definition until ``Book`` has been defined.
+
+Core Example
+------------
+
+The declarative API of GraphJoiner is built on top of a core API.
+The core API exposes the fundamentals of how GraphJoiner works,
+giving greater flexibility at the cost of being rather verbose to use directly.
+The below shows how the original example could be written using the core API.
+In general,
+using the declarative API should be preferred,
+either by using the built-in tools or adding your own.
 
 Let's say we have some models defined by SQLAlchemy. A book has an ID, a title,
 a genre and an author ID. An author has an ID and a name.
@@ -295,11 +498,4 @@ we can request the books by an author:
         )
 
     author_join_type = create_author_join_type()
-
-Installation
-------------
-
-::
-
-    pip install graphjoiner
 
