@@ -8,16 +8,16 @@ from graphql import GraphQLString
 class StaticDataObjectType(ObjectType):
     @classmethod
     def __select_all__(cls):
-        return None
+        return cls.__records__
 
     @classmethod
-    def __fetch_immediates__(cls, selections, query, context):
+    def __fetch_immediates__(cls, selections, records, context):
         return [
             tuple(
                 getattr(record, selection.field.attr_name)
                 for selection in selections
             )
-            for record in cls.__records__
+            for record in records
         ]
 
 
@@ -99,6 +99,23 @@ def test_first_or_none_relationship_is_resolved_to_first_object_if_there_is_more
     result = executor(Root)("{ author { name } }")
     assert_that(result, equal_to({
         "author": {"name": "PG Wodehouse"},
+    }))
+
+
+def test_relationships_can_take_filter_argument_to_refine_select():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        authors = many(Author, filter=lambda values: values[:1])
+
+    result = executor(Root)("{ authors { name } }")
+    assert_that(result, equal_to({
+        "authors": [{"name": "PG Wodehouse"}],
     }))
 
 

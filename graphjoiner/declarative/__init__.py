@@ -1,3 +1,4 @@
+from functools import partial
 import re
 
 from graphql import GraphQLArgument
@@ -100,23 +101,26 @@ class SimpleFieldDefinition(FieldDefinition):
         return self._owner.__field__(**self._kwargs)
 
 
-def first_or_none(target, join=None):
-    return RelationshipDefinition(graphjoiner.first_or_none, target, join)
+def _relationship_definition(func, target, join=None, filter=None):
+    return RelationshipDefinition(
+        func=func,
+        target=target,
+        join=join,
+        filter=filter,
+    )
 
 
-def single(target, join=None):
-    return RelationshipDefinition(graphjoiner.single, target, join)
-
-
-def many(target, join=None):
-    return RelationshipDefinition(graphjoiner.many, target, join)
+first_or_none = partial(_relationship_definition, graphjoiner.first_or_none)
+single = partial(_relationship_definition, graphjoiner.single)
+many = partial(_relationship_definition, graphjoiner.many)
 
 
 class RelationshipDefinition(FieldDefinition):
-    def __init__(self, func, target, join):
+    def __init__(self, func, target, join, filter):
         self._func = func
         self._target = target
         self._join = join
+        self._filter = filter
         self._args = []
 
     def instantiate(self):
@@ -124,6 +128,9 @@ class RelationshipDefinition(FieldDefinition):
 
         def generate_select_with_args(args, parent_select, context):
             select = generate_select(parent_select, context)
+
+            if self._filter is not None:
+                select = self._filter(select)
 
             for arg_name, _, refine_select in self._args:
                 if arg_name in args:
