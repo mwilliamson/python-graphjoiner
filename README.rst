@@ -81,10 +81,10 @@ We then define object types for the root, books and authors:
         title = field(column=BookRecord.title)
         genre = field(column=BookRecord.genre)
         author_id = field(column=BookRecord.author_id)
-        author = single(Author)
+        author = field(lambda: single(Author))
 
     class Root(RootType):
-        books = many(Book)
+        books = field(lambda: many(Book))
         
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
@@ -147,29 +147,25 @@ Which produces:
         ]
     }
 
-Let's break things down a little, starting with the definition of the root object:
+Let's break things down a little, starting with the definition of ``Author``:
 
 .. code-block:: python
 
-    class Root(RootType):
-        books = many(Book)
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
         
-        @books.arg("genre", GraphQLString)
-        def books_arg_genre(query, genre):
-            return query.filter(BookRecord.genre == genre)
+        id = field(column=AuthorRecord.id)
+        name = field(column=AuthorRecord.name)
 
-For each object type, we need to define its fields.
-The root has only one field, ``books``, a one-to-many relationship,
-which we define using ``many()``.
-The first argument, ``Book``,
-is the type we're defining a relationship to.
+When defining object types that represent SQLAlchemy models,
+we can inherit from ``SqlAlchemyObjectType``,
+with the ``__model__`` attribute set to the appropriate model.
 
-By default, a relationship from a root will select all possible instances.
-In this case, this means that ``books`` represents all of the books in the database.
+Fields that can be fetched without further joining can be defined using ``field()``.
+The arguments that ``field()`` accepts will depend on the object type.
+For SQLAlchemy object types, we pass in the column that the field should correspond to.
 
-Using ``books.arg()`` adds an optional argument to the field.
-
-Since we use it in ``Root``, we need to define ``Book``:
+Next is the definition of ``Book``:
 
 .. code-block:: python
 
@@ -180,28 +176,44 @@ Since we use it in ``Root``, we need to define ``Book``:
         title = field(column=BookRecord.title)
         genre = field(column=BookRecord.genre)
         author_id = field(column=BookRecord.author_id)
-        author = single(Author)
+        author = field(lambda: single(Author))
 
-When defining object types that represent SQLAlchemy models,
-we can inherit from ``SqlAlchemyObjectType``,
-with the ``__model__`` attribute set to the appropriate model.
+As before, we inherit from ``SqlAlchemyObjectType``,
+set ``__model__`` to the appropriate class,
+and define a number of fields that correspond to columns.
 
-Fields that can be fetched without further joining can be defined using ``field()``.
-The arguments that it accepts will depend on the object type.
-For SQLAlchemy object types, we pass in the column that the field should correspond to.
-
-The ``author`` field is defined as a one-to-one mapping from book to author.
+We also define an ``author`` field that allows a book to be joined to an author.
 GraphJoiner will automatically inspect ``BookRecord`` and ``AuthorRecord``
 and use the foreign keys to determine how they should be joined together.
 To override this behaviour, you can pass in an explicit ``join`` argument:
 
 .. code-block:: python
 
-    author_id = field(column=BookRecord.author_id)
-    author = single(Author, join={author_id: Author.id})
+    author = field(lambda: single(Author, join={Book.author_id: Author.id}))
 
 This explicitly tells GraphJoiner that authors can be joined to books
-by equality between ``Book.author_id`` and ``Author.id``.
+by equality between the fields ``Book.author_id`` and ``Author.id``.
+When defining relationships such as this,
+we call ``field()`` with a lambda to defer evaluation until all of the types and fields have been defined.
+
+Finally, we can create a root object:
+
+.. code-block:: python
+
+    class Root(RootType):
+        books = many(Book)
+        
+        @books.arg("genre", GraphQLString)
+        def books_arg_genre(query, genre):
+            return query.filter(BookRecord.genre == genre)
+
+The root has only one field, ``books``, a one-to-many relationship,
+which we define using ``many()``.
+As with ``single()``, we pass in the type we want to join to as the first argument, in this case ``Book``.
+By default, a relationship from a root will select all possible instances.
+In this case, this means that ``books`` represents all of the books in the database.
+
+Using ``books.arg()`` adds an optional argument to the field.
 
 For completeness, we can tweak the definition of ``Author`` so
 we can request the books by an author:
@@ -213,13 +225,7 @@ we can request the books by an author:
         
         id = field(column=AuthorRecord.id)
         name = field(column=AuthorRecord.name)
-        books = lazy_field(lambda: many(Book))
-        
-
-Since ``Author`` is defined ``Book``,
-we cannot refer to ``Book`` directly.
-Instead, we wrap the definition of the field inside a lambda passed to ``lazy_field()``,
-which defers the evaluation of the field definition until ``Book`` has been defined.
+        books = field(lambda: many(Book))
 
 Core Example
 ------------
