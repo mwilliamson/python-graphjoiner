@@ -55,7 +55,7 @@ def test_example():
         title = field(column=BookRecord.title)
         genre = field(column=BookRecord.genre)
         author_id = field(column=BookRecord.author_id)
-        author = single(Author)
+        author = field(lambda: single(Author))
 
     class Root(RootType):
         books = many(Book)

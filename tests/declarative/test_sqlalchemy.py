@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, Unicode
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from graphjoiner.declarative import executor, field, many, RootType, lazy_field
+from graphjoiner.declarative import executor, field, many, RootType
 from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
 
 
@@ -28,7 +28,7 @@ def test_can_explicitly_set_join_condition_between_sqlalchemy_objects():
 
         id = field(column=AuthorRecord.c_id)
         name = field(column=AuthorRecord.c_name)
-        books = lazy_field(lambda: many(Book, join={Author.id: Book.author_id}))
+        books = field(lambda: many(Book, join={Author.id: Book.author_id}))
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord

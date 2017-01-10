@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from graphjoiner.declarative import executor, extract, field, single, many, RootType, lazy_field, ObjectType
+from graphjoiner.declarative import executor, extract, field, single, many, RootType, ObjectType
 from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
 from .execution_test_cases import ExecutionTestCases
 
@@ -40,7 +40,7 @@ class Author(SqlAlchemyObjectType):
 
     id = field(column=AuthorRecord.c_id)
     name = field(column=AuthorRecord.c_name)
-    books = lazy_field(lambda: many(Book))
+    books = field(lambda: many(Book))
     book_titles = extract(books, "title")
 
 
@@ -53,7 +53,7 @@ class Book(SqlAlchemyObjectType):
     author = single(Author)
     books_by_same_author = extract(author, "books")
 
-    sales = lazy_field(lambda: single(Sales, {Book.title: Sales.book_title}))
+    sales = field(lambda: single(Sales, {Book.title: Sales.book_title}))
 
 
 class Sales(ObjectType):

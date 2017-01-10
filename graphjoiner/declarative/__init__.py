@@ -89,8 +89,11 @@ class FieldDefinition(object):
         return self._value
 
 
-def field(**kwargs):
-    return SimpleFieldDefinition(**kwargs)
+def field(func=None, **kwargs):
+    if callable(func):
+        return LazyFieldDefinition(func, **kwargs)
+    else:
+        return SimpleFieldDefinition(**kwargs)
 
 
 class SimpleFieldDefinition(FieldDefinition):
@@ -167,10 +170,6 @@ class ExtractFieldDefinition(FieldDefinition):
             self._relationship._owner = self._owner
 
         return graphjoiner.extract(self._relationship.field(), self._field_name)
-
-
-def lazy_field(func):
-    return LazyFieldDefinition(func=func)
 
 
 class LazyFieldDefinition(FieldDefinition):
