@@ -90,7 +90,7 @@ We then define object types for the root, books and authors:
         def books_arg_genre(query, genre):
             return query.filter(BookRecord.genre == genre)
 
-We create an `execute()` function by calling ``executor()`` with our ``Root``:
+We create an ``execute()`` function by calling ``executor()`` with our ``Root``:
 
 .. code-block:: python
 
@@ -198,7 +198,7 @@ To override this behaviour, you can pass in an explicit ``join`` argument:
 .. code-block:: python
 
     author_id = field(column=BookRecord.author_id)
-    author = single(Author, {author_id: Author.id})
+    author = single(Author, join={author_id: Author.id})
 
 This explicitly tells GraphJoiner that authors can be joined to books
 by equality between ``Book.author_id`` and ``Author.id``.
