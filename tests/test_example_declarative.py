@@ -58,7 +58,7 @@ def test_example():
         author = field(lambda: single(Author))
 
     class Root(RootType):
-        books = many(Book)
+        books = field(lambda: many(Book))
         
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
