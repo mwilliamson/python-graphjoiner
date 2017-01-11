@@ -102,7 +102,7 @@ def _find_field_for_column(cls, column):
     for field_definition in _get_simple_field_definitions(cls):
         if field_definition._kwargs["column"] == column:
             return field_definition
-    raise Exception("Could not find find field in {} for {}".format(cls.__name__, column))
+    raise Exception("Could not find field in {} for {}".format(cls.__name__, column))
 
 def _get_simple_field_definitions(cls):
     for field_definition in six.itervalues(cls.__dict__):
