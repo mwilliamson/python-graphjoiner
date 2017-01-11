@@ -15,7 +15,7 @@ setup(
     author='Michael Williamson',
     author_email='mike@zwobble.org',
     url='http://github.com/healx/python-graphjoiner',
-    packages=['graphjoiner'],
+    packages=['graphjoiner', 'graphjoiner.declarative'],
     keywords="graphql graph join ",
     install_requires=["graphql-core>=0.5.3,<0.6", "attrs>=16.1.0,<17", "six"],
     classifiers=[
