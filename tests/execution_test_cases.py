@@ -1,6 +1,7 @@
-from hamcrest import assert_that
+from graphql import GraphQLError
+from hamcrest import assert_that, all_of, contains, has_string, instance_of
 
-from .matchers import is_successful_result
+from .matchers import is_invalid_result, is_successful_result
 
 
 class ExecutionTestCases(object):
@@ -565,3 +566,18 @@ class ExecutionTestCases(object):
                 "includeTrue_skipFalse": "Leave It to Psmith"
             }
         }))
+
+    def test_query_is_validated_on_execution(self):
+        query = """{
+            x
+        }"""
+
+        result = self.execute(query)
+        assert_that(result, is_invalid_result(
+            errors=contains(
+                all_of(
+                    instance_of(GraphQLError),
+                    has_string('Cannot query field "x" on type "Root".')
+                ),
+            ),
+        ))

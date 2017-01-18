@@ -2,9 +2,10 @@ import abc
 from itertools import groupby
 
 from attr import assoc
-from graphql import GraphQLField, GraphQLObjectType, GraphQLList
+from graphql import GraphQLField, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import ExecutionResult
 from graphql.language.parser import parse
+from graphql.validation import validate
 import six
 
 from .requests import request_from_graphql_ast, request_from_graphql_document, Request, field_key
@@ -12,7 +13,16 @@ from .util import partition, unique
 
 
 def execute(root, query, context=None, variables=None):
-    request = request_from_graphql_document(parse(query), root, context=context, variables=variables)
+    schema = GraphQLSchema(query=root.to_graphql_type())
+    ast = parse(query)
+    validation_errors = validate(schema, ast)
+    if validation_errors:
+        return ExecutionResult(
+            errors=validation_errors,
+            invalid=True,
+        )
+
+    request = request_from_graphql_document(ast, root, context=context, variables=variables)
     data = root.fetch(request, None)[0].value
     return ExecutionResult(data=data, errors=[])
 
