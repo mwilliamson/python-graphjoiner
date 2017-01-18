@@ -1,4 +1,7 @@
-from hamcrest import assert_that, equal_to
+from hamcrest import assert_that
+
+from .matchers import is_successful_result
+
 
 def test_example():
     from sqlalchemy import Column, Integer, Unicode, ForeignKey
@@ -90,7 +93,7 @@ def test_example():
 
     results = execute(query, context=Context(session))
 
-    assert_that(results, equal_to({
+    assert_that(results, is_successful_result(data={
         "books": [
             {
                 "title": "Leave It to Psmith",

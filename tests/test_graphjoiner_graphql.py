@@ -133,5 +133,4 @@ class TestGraphJoiner(ExecutionTestCases):
 
         result = graphql(schema, query, variable_values=variables)
 
-        assert not result.errors
-        return result.data
+        return result

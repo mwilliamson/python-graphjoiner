@@ -1,4 +1,6 @@
-from hamcrest import assert_that, equal_to
+from hamcrest import assert_that
+
+from .matchers import is_successful_result
 
 
 class ExecutionTestCases(object):
@@ -14,7 +16,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "books": [
                 {
                     "id": 1,
@@ -46,7 +48,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "books": [
                 {
                     "id": 1,
@@ -82,7 +84,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "name": "PG Wodehouse",
             },
@@ -100,7 +102,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": None,
         }))
 
@@ -119,7 +121,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "books": [
                     {"title": "Leave It to Psmith"},
@@ -140,7 +142,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "bookTitles": [
                     "Leave It to Psmith",
@@ -163,7 +165,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "booksBySameAuthor": [
                     {"title": "Leave It to Psmith"},
@@ -184,7 +186,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "authorName": "PG Wodehouse",
             },
@@ -203,7 +205,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "authorName": "PG Wodehouse",
                 "name": "PG Wodehouse",
@@ -222,7 +224,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "wodehouse": {
                 "name": "PG Wodehouse"
             }
@@ -243,7 +245,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "wodehouse": {
                 "name": "PG Wodehouse"
             },
@@ -266,7 +268,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "b": [
                     {"title": "Leave It to Psmith"},
@@ -289,7 +291,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "books": [
                     {"authorId": "Leave It to Psmith"},
@@ -313,7 +315,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "id": "PG Wodehouse",
                 "books": [
@@ -338,7 +340,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query, variables={"authorId": 1})
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "author": {
                 "id": "PG Wodehouse",
                 "books": [
@@ -364,7 +366,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "id": 1,
                 "title": "Leave It to Psmith",
@@ -391,7 +393,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "id": 1,
                 "title": "Leave It to Psmith",
@@ -412,7 +414,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "id": 1,
                 "title": "Leave It to Psmith",
@@ -436,7 +438,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "author": {
                     "name": "PG Wodehouse",
@@ -461,7 +463,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "author": {
                     "id": 1,
@@ -491,7 +493,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "author": {
                     "books": [
@@ -520,7 +522,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "title": "Leave It to Psmith"
             }
@@ -538,7 +540,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "title": "Leave It to Psmith"
             }
@@ -558,7 +560,7 @@ class ExecutionTestCases(object):
 
         result = self.execute(query)
 
-        assert_that(result, equal_to({
+        assert_that(result, is_successful_result(data={
             "book": {
                 "includeTrue_skipFalse": "Leave It to Psmith"
             }

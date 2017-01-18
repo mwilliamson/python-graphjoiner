@@ -1,8 +1,9 @@
 import attr
-from hamcrest import assert_that, equal_to
+from graphql import GraphQLString
+from hamcrest import assert_that
 
 from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract
-from graphql import GraphQLString
+from ..matchers import is_successful_result
 
 
 class StaticDataObjectType(ObjectType):
@@ -31,7 +32,7 @@ def test_single_relationship_is_resolved_to_null_if_there_are_no_matching_result
         author = single(Author)
 
     result = executor(Root)("{ author { name } }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "author": None,
     }))
 
@@ -48,7 +49,7 @@ def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_match
         author = single(Author)
 
     result = executor(Root)("{ author { name } }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
 
@@ -63,7 +64,7 @@ def test_first_or_none_relationship_is_resolved_to_null_if_there_are_no_matching
         author = first_or_none(Author)
 
     result = executor(Root)("{ author { name } }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "author": None,
     }))
 
@@ -80,7 +81,7 @@ def test_first_or_none_relationship_is_resolved_to_object_if_there_is_exactly_on
         author = first_or_none(Author)
 
     result = executor(Root)("{ author { name } }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
 
@@ -97,7 +98,7 @@ def test_first_or_none_relationship_is_resolved_to_first_object_if_there_is_more
         author = first_or_none(Author)
 
     result = executor(Root)("{ author { name } }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
 
@@ -114,7 +115,7 @@ def test_relationships_can_take_filter_argument_to_refine_select():
         authors = many(Author, filter=lambda values: values[:1])
 
     result = executor(Root)("{ authors { name } }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "authors": [{"name": "PG Wodehouse"}],
     }))
 
@@ -132,7 +133,7 @@ def test_can_extract_fields_from_relationships():
         author_names = extract(authors, "name")
 
     result = executor(Root)("{ authorNames }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "authorNames": ["PG Wodehouse", "Joseph Heller"],
     }))
 
@@ -149,6 +150,6 @@ def test_can_extract_fields_from_anonymous_fields():
         author_names = extract(many(Author), "name")
 
     result = executor(Root)("{ authorNames }")
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "authorNames": ["PG Wodehouse", "Joseph Heller"],
     }))

@@ -1,5 +1,5 @@
 from graphql import GraphQLInt, GraphQLString
-from hamcrest import assert_that, equal_to
+from hamcrest import assert_that
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from graphjoiner.declarative import executor, extract, field, single, many, RootType, ObjectType
 from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
 from .execution_test_cases import ExecutionTestCases
+from .matchers import is_successful_result
 
 
 Base = declarative_base()
@@ -134,7 +135,7 @@ def test_can_join_across_types():
 
     result = execute(query)
 
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "book": {
             "sales": {
                 "quantity": 416,

@@ -13,6 +13,7 @@ from graphjoiner.declarative.sqlalchemy import (
     _find_join_candidates,
     _sql_type_to_graphql_type,
 )
+from ..matchers import is_successful_result
 
 
 def test_can_explicitly_set_join_condition_between_sqlalchemy_objects():
@@ -65,7 +66,7 @@ def test_can_explicitly_set_join_condition_between_sqlalchemy_objects():
             books { title }
         }
     }""", context=QueryContext(session=session))
-    assert_that(result, equal_to({
+    assert_that(result, is_successful_result(data={
         "authors": [
             {"name": "PG Wodehouse", "books": [{"title": "Leave It to Psmith"}]},
             {"name": "Joseph Heller", "books": [{"title": "Catch-22"}]},

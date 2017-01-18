@@ -3,6 +3,7 @@ from itertools import groupby
 
 from attr import assoc
 from graphql import GraphQLField, GraphQLObjectType, GraphQLList
+from graphql.execution import ExecutionResult
 from graphql.language.parser import parse
 import six
 
@@ -12,7 +13,8 @@ from .util import partition, unique
 
 def execute(root, query, context=None, variables=None):
     request = request_from_graphql_document(parse(query), root, context=context, variables=variables)
-    return root.fetch(request, None)[0].value
+    data = root.fetch(request, None)[0].value
+    return ExecutionResult(data=data, errors=[])
 
 
 class Result(object):

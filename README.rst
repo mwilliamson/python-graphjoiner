@@ -117,10 +117,10 @@ We create an ``execute()`` function by calling ``executor()`` with our ``Root``:
         def __init__(self, session):
             self.session = session
 
-    execute(root, query, context=Context(session))
+    result = execute(root, query, context=Context(session))
 
 
-Which produces:
+Where ``result.data`` is:
 
 ::
 
