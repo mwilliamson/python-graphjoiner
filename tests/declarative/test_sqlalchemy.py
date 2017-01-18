@@ -1,11 +1,18 @@
+import graphql
 from hamcrest import assert_that, equal_to
+import pytest
+import sqlalchemy
 from sqlalchemy import create_engine, Column, ForeignKey, Integer, literal, Unicode
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session
 
 from graphjoiner.declarative import executor, field, many, RootType
-from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, _find_join_candidates
+from graphjoiner.declarative.sqlalchemy import (
+    SqlAlchemyObjectType,
+    _find_join_candidates,
+    _sql_type_to_graphql_type,
+)
 
 
 def test_can_explicitly_set_join_condition_between_sqlalchemy_objects():
@@ -101,6 +108,31 @@ def test_hybrid_properties_are_ignored_when_scanning_for_foreign_keys():
         list(_find_join_candidates(Author, Book)),
         equal_to([(Author.__dict__["id"], Book.__dict__["author_id"])]),
     )
+
+
+def test_type_of_field_is_determined_from_type_of_column():
+    Base = declarative_base()
+
+    class AuthorRecord(Base):
+        __tablename__ = "author"
+        c_id = Column(Integer, primary_key=True)
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+        id = field(column=AuthorRecord.c_id)
+
+    assert_that(Author.id.type, equal_to(graphql.GraphQLInt))
+
+
+@pytest.mark.parametrize("sql_type, graphql_type", [
+    (sqlalchemy.Integer(), graphql.GraphQLInt),
+    (sqlalchemy.Float(), graphql.GraphQLFloat),
+    (sqlalchemy.String(), graphql.GraphQLString),
+    (sqlalchemy.Unicode(), graphql.GraphQLString),
+    (sqlalchemy.Boolean(), graphql.GraphQLBoolean),
+])
+def test_type_mappings(sql_type, graphql_type):
+    assert_that(_sql_type_to_graphql_type(sql_type), equal_to(graphql_type))
 
 
 class QueryContext(object):

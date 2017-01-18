@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
+import graphql
 import six
+import sqlalchemy
 from sqlalchemy.orm import Query
 
 import graphjoiner
@@ -13,8 +15,10 @@ class SqlAlchemyObjectType(ObjectType):
 
     @staticmethod
     def __field__(column):
-        # TODO: SQLAlchemy type to GraphQL type
-        return graphjoiner.field(column=column, type=None)
+        return graphjoiner.field(
+            column=column,
+            type=_sql_type_to_graphql_type(column.type),
+        )
 
     @classmethod
     def __select_all__(cls):
@@ -110,3 +114,18 @@ def _get_simple_field_definitions(cls):
     for field_definition in six.itervalues(cls.__dict__):
         if isinstance(field_definition, declarative.SimpleFieldDefinition):
             yield field_definition
+
+
+_type_mappings = [
+    (sqlalchemy.Integer, graphql.GraphQLInt),
+    (sqlalchemy.Float, graphql.GraphQLFloat),
+    (sqlalchemy.String, graphql.GraphQLString),
+    (sqlalchemy.Boolean, graphql.GraphQLBoolean),
+]
+
+def _sql_type_to_graphql_type(sql_type):
+    for mapped_sql_type, graphql_type in _type_mappings:
+        if isinstance(sql_type, mapped_sql_type):
+            return graphql_type
+
+    raise Exception("Unknown SQL type: {}".format(sql_type))
