@@ -1,4 +1,5 @@
 import abc
+from functools import partial
 from itertools import groupby
 
 from attr import assoc
@@ -12,7 +13,16 @@ from .requests import request_from_graphql_ast, request_from_graphql_document, R
 from .util import partition, unique
 
 
-def execute(root, query, context=None, variables=None):
+def executor(root):
+    schema = GraphQLSchema(query=root.to_graphql_type())
+    return partial(_execute, schema, root)
+
+
+def execute(root, *args, **kwargs):
+    return executor(root)(*args, **kwargs)
+
+
+def _execute(schema, root, query, context=None, variables=None):
     schema = GraphQLSchema(query=root.to_graphql_type())
     ast = parse(query)
     validation_errors = validate(schema, ast)

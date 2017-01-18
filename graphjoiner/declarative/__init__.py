@@ -9,11 +9,7 @@ import graphjoiner
 
 def executor(root):
     root_type = root.__graphjoiner__
-
-    def execute(*args, **kwargs):
-        return graphjoiner.execute(root_type, *args, **kwargs)
-
-    return execute
+    return graphjoiner.executor(root_type)
 
 
 class ObjectTypeMeta(type):
