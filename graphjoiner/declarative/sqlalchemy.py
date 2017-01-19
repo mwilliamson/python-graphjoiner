@@ -14,10 +14,12 @@ class SqlAlchemyObjectType(ObjectType):
     __abstract__ = True
 
     @staticmethod
-    def __field__(column):
+    def __field__(column, type=None):
+        if type is None:
+            type = _sql_type_to_graphql_type(column.type)
         return graphjoiner.field(
             column=column,
-            type=_sql_type_to_graphql_type(column.type),
+            type=type,
         )
 
     @classmethod

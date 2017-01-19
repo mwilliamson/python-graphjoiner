@@ -125,6 +125,20 @@ def test_type_of_field_is_determined_from_type_of_column():
     assert_that(Author.id.type, equal_to(graphql.GraphQLInt))
 
 
+def test_type_of_field_can_be_explicitly_set():
+    Base = declarative_base()
+
+    class AuthorRecord(Base):
+        __tablename__ = "author"
+        c_id = Column(Integer, primary_key=True)
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+        id = field(column=AuthorRecord.c_id, type=graphql.GraphQLString)
+
+    assert_that(Author.id.type, equal_to(graphql.GraphQLString))
+
+
 @pytest.mark.parametrize("sql_type, graphql_type", [
     (sqlalchemy.Integer(), graphql.GraphQLInt),
     (sqlalchemy.Float(), graphql.GraphQLFloat),
