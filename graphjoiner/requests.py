@@ -4,7 +4,6 @@ from copy import copy
 from attr import attrs, attrib
 from graphql.language import ast as ast_types
 from graphql.execution.values import get_argument_values
-from graphql.type.definition import GraphQLArgumentDefinition
 from graphql.type.directives import GraphQLIncludeDirective, GraphQLSkipDirective
 import six
 from six.moves import filter
@@ -44,16 +43,7 @@ def request_from_graphql_ast(ast, root, context, variables, field, fragments):
     if field is None:
         args = {}
     else:
-        arg_definitions = [
-            GraphQLArgumentDefinition(
-                type=arg.type,
-                name=arg_name,
-                default_value=arg.default_value,
-                description=arg.description,
-            )
-            for arg_name, arg in six.iteritems(field.args)
-        ]
-        args = get_argument_values(arg_definitions, getattr(ast, "arguments", []), variables=variables)
+        args = get_argument_values(field.args, getattr(ast, "arguments", []), variables=variables)
 
     selections = _graphql_selections(ast, root, context=context, variables=variables, fragments=fragments)
 
