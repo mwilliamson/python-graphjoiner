@@ -70,6 +70,7 @@ class Field(FieldBase):
         return GraphQLField(
             type=self.type,
             resolver=_resolve_fetched_field,
+            args=self.args,
         )
 
 
