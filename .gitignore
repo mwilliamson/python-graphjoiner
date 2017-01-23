@@ -4,3 +4,4 @@
 /_virtualenv
 /.tox
 /build
+/dist
