@@ -1,5 +1,5 @@
 from graphql import GraphQLError
-from hamcrest import assert_that, all_of, contains, has_string, instance_of
+from hamcrest import assert_that, all_of, contains, has_string, instance_of, starts_with
 
 from .matchers import is_invalid_result, is_successful_result
 
@@ -578,6 +578,19 @@ class ExecutionTestCases(object):
                 all_of(
                     instance_of(GraphQLError),
                     has_string('Cannot query field "x" on type "Root".')
+                ),
+            ),
+        ))
+
+    def test_syntax_errors_are_reported(self):
+        query = " "
+
+        result = self.execute(query)
+        assert_that(result, is_invalid_result(
+            errors=contains(
+                all_of(
+                    instance_of(GraphQLError),
+                    has_string(starts_with("Syntax Error"))
                 ),
             ),
         ))

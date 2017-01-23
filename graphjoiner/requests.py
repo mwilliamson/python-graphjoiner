@@ -5,7 +5,6 @@ from attr import attrs, attrib
 from graphql.language import ast as ast_types
 from graphql.execution.values import get_argument_values
 from graphql.type.directives import GraphQLIncludeDirective, GraphQLSkipDirective
-import six
 from six.moves import filter
 
 from .util import single
