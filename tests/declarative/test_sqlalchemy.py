@@ -16,7 +16,7 @@ from graphjoiner.declarative.sqlalchemy import (
 from ..matchers import is_successful_result
 
 
-def test_can_explicitly_set_join_condition_between_sqlalchemy_objects():
+def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_objects():
     Base = declarative_base()
 
     class AuthorRecord(Base):
@@ -58,6 +58,74 @@ def test_can_explicitly_set_join_condition_between_sqlalchemy_objects():
     session.add(AuthorRecord(c_name="Joseph Heller"))
     session.add(BookRecord(c_title="Leave It to Psmith", c_author_id=1))
     session.add(BookRecord(c_title="Catch-22", c_author_id=2))
+    session.commit()
+
+    result = executor(Root)("""{
+        authors {
+            name
+            books { title }
+        }
+    }""", context=QueryContext(session=session))
+    assert_that(result, is_successful_result(data={
+        "authors": [
+            {"name": "PG Wodehouse", "books": [{"title": "Leave It to Psmith"}]},
+            {"name": "Joseph Heller", "books": [{"title": "Catch-22"}]},
+        ],
+    }))
+
+
+def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalchemy_objects():
+    Base = declarative_base()
+
+    class AuthorRecord(Base):
+        __tablename__ = "author"
+
+        c_id_1 = Column(Integer, primary_key=True)
+        c_id_2 = Column(Integer, primary_key=True)
+        c_name = Column(Unicode, nullable=False)
+
+    class BookRecord(Base):
+        __tablename__ = "book"
+
+        c_id = Column(Integer, primary_key=True)
+        c_title = Column(Unicode, nullable=False)
+        c_author_id_1 = Column(Integer)
+        c_author_id_2 = Column(Integer)
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+
+        id_1 = field(column=AuthorRecord.c_id_1)
+        id_2 = field(column=AuthorRecord.c_id_2)
+        name = field(column=AuthorRecord.c_name)
+        books = field(lambda: many(Book, join={
+            Author.id_1: Book.author_id_1,
+            Author.id_2: Book.author_id_2,
+        }))
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+
+        id = field(column=BookRecord.c_id)
+        title = field(column=BookRecord.c_title)
+        author_id_1 = field(column=BookRecord.c_author_id_1)
+        author_id_2 = field(column=BookRecord.c_author_id_2)
+
+    class Root(RootType):
+        authors = many(Author)
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    session = Session(engine)
+    wodehouse = AuthorRecord(c_name="PG Wodehouse", c_id_1=1, c_id_2=11)
+    heller = AuthorRecord(c_name="Joseph Heller", c_id_1=2, c_id_2=12)
+    session.add(wodehouse)
+    session.add(heller)
+    session.flush()
+    session.add(BookRecord(c_title="Leave It to Psmith", c_author_id_1=wodehouse.c_id_1, c_author_id_2=wodehouse.c_id_2))
+    session.add(BookRecord(c_title="Catch-22", c_author_id_1=heller.c_id_1, c_author_id_2=heller.c_id_2))
     session.commit()
 
     result = executor(Root)("""{

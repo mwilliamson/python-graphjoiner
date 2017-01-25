@@ -63,21 +63,28 @@ def _relationship_to_sqlalchemy(local, target, join):
         local_field_definition, remote_field_definition = _find_foreign_key(local, target)
         local_field = local_field_definition.field()
         remote_field = remote_field_definition.field()
+        join = {local_field: remote_field}
     else:
-        (local_field, remote_field), = join.items()
+        join = join.copy()
 
     def select(parent_select, context):
         parents = parent_select \
-            .with_entities(local_field.column) \
+            .with_entities(*(
+                local_field.column
+                for local_field in join.keys()
+            )) \
             .subquery()
 
         return target.__select_all__() \
-            .join(parents, parents.c.values()[0] == remote_field.column)
+            .join(parents, sqlalchemy.and_(
+                parent_column == remote_field.column
+                for parent_column, remote_field in zip(parents.c.values(), join.values())
+            ))
 
-
-    join = {local_field.field_name: remote_field.field_name}
-
-    return select, join
+    return select, dict(
+        (local_field.field_name, remote_field.field_name)
+        for local_field, remote_field in join.items()
+    )
 
 
 def _find_foreign_key(local, target):
