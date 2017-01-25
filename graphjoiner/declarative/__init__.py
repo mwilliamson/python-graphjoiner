@@ -29,6 +29,7 @@ class ObjectTypeMeta(type):
             name=cls.__name__,
             fields=fields,
             fetch_immediates=cls.__fetch_immediates__,
+            interfaces=attrs.get("__interfaces__", []),
         )
 
         for key, field_definition in six.iteritems(cls.__dict__):
@@ -176,20 +177,20 @@ class LazyFieldDefinition(FieldDefinition):
 
     def instantiate(self):
         field_definition = self._func()
-        
+
         for setup in self._setup:
             setup(field_definition)
-        
+
         field_definition.field_name = self.field_name
         field_definition.attr_name = self.attr_name
         return field_definition.__get__(None, self._owner)
-    
+
     def arg(self, arg_name, arg_type):
         def add_arg(refine_select):
             self._setup.append(lambda field: field.arg(arg_name, arg_type)(refine_select))
 
         return add_arg
-        
+
 
 
 def _snake_case_to_camel_case(value):

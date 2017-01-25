@@ -268,10 +268,14 @@ class ScalarJoinType(Value):
 
 
 class JoinType(Value):
-    def __init__(self, name, fetch_immediates, fields):
+    def __init__(self, name, fetch_immediates, fields, interfaces=None):
+        if interfaces is None:
+            interfaces = ()
+
         self._name = name
         self._fetch_immediates = fetch_immediates
         self._generate_fields = fields
+        self._interfaces = interfaces
         self._fields = None
         self._graphql_type = None
 
@@ -329,6 +333,7 @@ class JoinType(Value):
                     (name, field.to_graphql_field())
                     for name, field in six.iteritems(self.fields())
                 ),
+                interfaces=self._interfaces,
             )
 
         return self._graphql_type
