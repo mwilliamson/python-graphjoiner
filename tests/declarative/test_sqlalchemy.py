@@ -1,5 +1,5 @@
 import graphql
-from hamcrest import assert_that, equal_to
+from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine, Column, ForeignKey, Integer, literal, Unicode
@@ -177,6 +177,50 @@ def test_hybrid_properties_are_ignored_when_scanning_for_foreign_keys():
         list(_find_join_candidates(Author, Book)),
         equal_to([(Author.__dict__["id"], Book.__dict__["author_id"])]),
     )
+
+
+def test_can_explicitly_set_primary_key():
+    Base = declarative_base()
+
+    class AuthorRecord(Base):
+        __tablename__ = "author"
+
+        c_id = Column(Integer, primary_key=True)
+        c_name = Column(Unicode, nullable=False)
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+
+        @staticmethod
+        def __primary_key__():
+            return [AuthorRecord.c_name]
+
+        name = field(column=AuthorRecord.c_name)
+
+    class Root(RootType):
+        authors = many(Author)
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    session = Session(engine)
+    session.add(AuthorRecord(c_name="PG Wodehouse"))
+    session.add(AuthorRecord(c_name="PG Wodehouse"))
+    session.add(AuthorRecord(c_name="Joseph Heller"))
+    session.commit()
+
+    result = executor(Root)("""{
+        authors {
+            name
+        }
+    }""", context=QueryContext(session=session))
+    assert_that(result, is_successful_result(data=has_entries({
+        "authors": contains_inanyorder(
+            {"name": "PG Wodehouse"},
+            {"name": "Joseph Heller"},
+        ),
+    })))
 
 
 def test_type_of_field_is_determined_from_type_of_column():

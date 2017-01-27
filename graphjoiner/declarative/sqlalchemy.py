@@ -13,6 +13,10 @@ from . import ObjectType
 class SqlAlchemyObjectType(ObjectType):
     __abstract__ = True
 
+    @classmethod
+    def __primary_key__(cls):
+        return cls.__model__.__mapper__.primary_key
+
     @staticmethod
     def __field__(column, type=None):
         if type is None:
@@ -52,7 +56,7 @@ class SqlAlchemyObjectType(ObjectType):
             selection.field.column
             for selection in selections
         ))
-        for primary_key_column in cls.__model__.__mapper__.primary_key:
+        for primary_key_column in cls.__primary_key__():
             query = query.add_columns(primary_key_column)
 
         return query.distinct().with_session(context.session).all()
