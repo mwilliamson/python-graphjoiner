@@ -7,7 +7,13 @@ from graphql.execution.values import get_argument_values
 from graphql.type.directives import GraphQLIncludeDirective, GraphQLSkipDirective
 from six.moves import filter
 
-from .util import single
+from .util import find, single
+
+
+@attrs
+class DocumentRequest(object):
+    query = attrib()
+    schema_query = attrib()
 
 
 @attrs
@@ -26,11 +32,31 @@ def request_from_graphql_document(document, root, context, variables):
         for definition in document.definitions
         if isinstance(definition, ast_types.FragmentDefinition)
     )
-    query = single(list(filter(
-        lambda definition: isinstance(definition, ast_types.OperationDefinition),
-        document.definitions
+    definition_index, query = single(list(filter(
+        lambda pair: isinstance(pair[1], ast_types.OperationDefinition),
+        enumerate(document.definitions)
     )))
-    return request_from_graphql_ast(query, root, context=context, variables=variables, fragments=fragments, field=None)
+
+    schema_selection = find(
+        lambda selection: selection.name.value == "__schema",
+        query.selection_set.selections,
+    )
+
+    if schema_selection is None:
+        schema_query = None
+    else:
+        schema_query_definition = copy(query)
+        schema_query_definition.selection_set = copy(schema_query_definition.selection_set)
+        schema_query_definition.selection_set.selections = [schema_selection]
+
+        schema_query = copy(document)
+        schema_query.definitions = copy(schema_query.definitions)
+        schema_query.definitions[definition_index] = schema_query_definition
+
+    return DocumentRequest(
+        query=request_from_graphql_ast(query, root, context=context, variables=variables, fragments=fragments, field=None),
+        schema_query=schema_query,
+    )
 
 
 def request_from_graphql_ast(ast, root, context, variables, field, fragments):
@@ -82,6 +108,7 @@ def _graphql_selections(ast, root, context, variables, fragments):
                 field=fields[_field_name(selection)]
             )
             for selection in field_selections
+            if _field_name(selection) != "__schema"
         ]
     else:
         return []

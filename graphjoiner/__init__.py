@@ -4,7 +4,7 @@ from itertools import groupby
 
 from attr import assoc
 from graphql import GraphQLError, GraphQLField, GraphQLObjectType, GraphQLList, GraphQLSchema
-from graphql.execution import ExecutionResult
+from graphql.execution import execute as graphql_execute, ExecutionResult
 from graphql.language.parser import parse
 from graphql.validation import validate
 import six
@@ -34,7 +34,19 @@ def _execute(schema, root, query, context=None, variables=None):
             )
 
         request = request_from_graphql_document(ast, root, context=context, variables=variables)
-        data = root.fetch(request, None)[0].value
+        data = root.fetch(request.query, None)[0].value
+
+        if request.schema_query is not None:
+            schema_result = graphql_execute(
+                schema,
+                request.schema_query,
+                variable_values=variables,
+            )
+            if schema_result.invalid:
+                return schema_result
+
+            data.update(schema_result.data)
+
         return ExecutionResult(data=data, errors=[])
     except GraphQLError as error:
         return ExecutionResult(errors=[error], invalid=True)

@@ -18,6 +18,12 @@ def single(values):
         raise Exception("Expected 1 but got {}".format(len(values)))
 
 
+def find(predicate, values):
+    for value in values:
+        if predicate(value):
+            return value
+
+
 def unique(values, key):
     result = []
     seen = set()

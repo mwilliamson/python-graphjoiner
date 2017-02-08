@@ -594,3 +594,23 @@ class ExecutionTestCases(object):
                 ),
             ),
         ))
+
+
+    def test_can_query_schema(self):
+        query = """
+            {
+                __schema {
+                    queryType { name }
+                }
+            }
+        """
+
+        result = self.execute(query)
+
+        assert_that(result, is_successful_result(data={
+            "__schema": {
+                "queryType": {
+                    "name": "Root",
+                },
+            },
+        }))
