@@ -5,9 +5,8 @@ import six
 import sqlalchemy
 from sqlalchemy.orm import Query
 
-import graphjoiner
 from graphjoiner import declarative
-from . import ObjectType, relationship_builder
+from . import field, ObjectType, relationship_builder
 
 
 class SqlAlchemyObjectType(ObjectType):
@@ -16,15 +15,6 @@ class SqlAlchemyObjectType(ObjectType):
     @classmethod
     def __primary_key__(cls):
         return cls.__model__.__mapper__.primary_key
-
-    @staticmethod
-    def __field__(column, type=None):
-        if type is None:
-            type = _sql_type_to_graphql_type(column.type)
-        return graphjoiner.field(
-            column=column,
-            type=type,
-        )
 
     @classmethod
     def __select_all__(cls):
@@ -41,6 +31,15 @@ class SqlAlchemyObjectType(ObjectType):
 
         return query.distinct().with_session(context.session).all()
 
+
+def column_field(column, type=None):
+    if type is None:
+        type = _sql_type_to_graphql_type(column.type)
+    return field(
+        column=column,
+        type=type,
+    )
+    
 
 @relationship_builder
 def select(local, target):

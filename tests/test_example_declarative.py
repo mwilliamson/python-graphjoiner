@@ -42,22 +42,22 @@ def test_example():
 
 
     from graphql import GraphQLString
-    from graphjoiner.declarative import RootType, single, many, field
-    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, select, sql_join
+    from graphjoiner.declarative import RootType, single, many
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, column_field, select, sql_join
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
         
-        id = field(column=AuthorRecord.id)
-        name = field(column=AuthorRecord.name)
+        id = column_field(AuthorRecord.id)
+        name = column_field(AuthorRecord.name)
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
         
-        id = field(column=BookRecord.id)
-        title = field(column=BookRecord.title)
-        genre = field(column=BookRecord.genre)
-        author_id = field(column=BookRecord.author_id)
+        id = column_field(BookRecord.id)
+        title = column_field(BookRecord.title)
+        genre = column_field(BookRecord.genre)
+        author_id = column_field(BookRecord.author_id)
         author = single(lambda: sql_join(Author))
 
     class Root(RootType):

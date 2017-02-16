@@ -7,9 +7,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session
 
-from graphjoiner.declarative import executor, field, many, RootType
+from graphjoiner.declarative import executor, many, RootType
 from graphjoiner.declarative.sqlalchemy import (
     SqlAlchemyObjectType,
+    column_field,
     select,
     sql_join,
     _find_join_candidates,
@@ -37,16 +38,16 @@ def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
 
-        id = field(column=AuthorRecord.c_id)
-        name = field(column=AuthorRecord.c_name)
+        id = column_field(AuthorRecord.c_id)
+        name = column_field(AuthorRecord.c_name)
         books = many(lambda: sql_join(Book, join={Author.id: Book.author_id}))
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
 
-        id = field(column=BookRecord.c_id)
-        title = field(column=BookRecord.c_title)
-        author_id = field(column=BookRecord.c_author_id)
+        id = column_field(BookRecord.c_id)
+        title = column_field(BookRecord.c_title)
+        author_id = column_field(BookRecord.c_author_id)
 
     class Root(RootType):
         authors = many(lambda: select(Author))
@@ -97,9 +98,9 @@ def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalche
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
 
-        id_1 = field(column=AuthorRecord.c_id_1)
-        id_2 = field(column=AuthorRecord.c_id_2)
-        name = field(column=AuthorRecord.c_name)
+        id_1 = column_field(AuthorRecord.c_id_1)
+        id_2 = column_field(AuthorRecord.c_id_2)
+        name = column_field(AuthorRecord.c_name)
         books = many(lambda: sql_join(Book, join={
             Author.id_1: Book.author_id_1,
             Author.id_2: Book.author_id_2,
@@ -108,10 +109,10 @@ def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalche
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
 
-        id = field(column=BookRecord.c_id)
-        title = field(column=BookRecord.c_title)
-        author_id_1 = field(column=BookRecord.c_author_id_1)
-        author_id_2 = field(column=BookRecord.c_author_id_2)
+        id = column_field(BookRecord.c_id)
+        title = column_field(BookRecord.c_title)
+        author_id_1 = column_field(BookRecord.c_author_id_1)
+        author_id_2 = column_field(BookRecord.c_author_id_2)
 
     class Root(RootType):
         authors = many(lambda: select(Author))
@@ -166,14 +167,14 @@ def test_hybrid_properties_are_ignored_when_scanning_for_foreign_keys():
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
 
-        id = field(column=AuthorRecord.c_id)
+        id = column_field(AuthorRecord.c_id)
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
 
-        id = field(column=BookRecord.c_id)
-        title = field(column=BookRecord.c_title)
-        author_id = field(column=BookRecord.c_author_id)
+        id = column_field(BookRecord.c_id)
+        title = column_field(BookRecord.c_title)
+        author_id = column_field(BookRecord.c_author_id)
 
     assert_that(
         list(_find_join_candidates(Author, Book)),
@@ -197,7 +198,7 @@ def test_can_explicitly_set_primary_key():
         def __primary_key__():
             return [AuthorRecord.c_name]
 
-        name = field(column=AuthorRecord.c_name)
+        name = column_field(AuthorRecord.c_name)
 
     class Root(RootType):
         authors = many(lambda: select(Author))
@@ -234,7 +235,7 @@ def test_type_of_field_is_determined_from_type_of_column():
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
-        id = field(column=AuthorRecord.c_id)
+        id = column_field(AuthorRecord.c_id)
 
     assert_that(Author.id.type, equal_to(graphql.GraphQLInt))
 
@@ -248,7 +249,7 @@ def test_type_of_field_can_be_explicitly_set():
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
-        id = field(column=AuthorRecord.c_id, type=graphql.GraphQLString)
+        id = column_field(AuthorRecord.c_id, type=graphql.GraphQLString)
 
     assert_that(Author.id.type, equal_to(graphql.GraphQLString))
 

@@ -43,10 +43,6 @@ class ObjectTypeMeta(type):
 class ObjectType(six.with_metaclass(ObjectTypeMeta)):
     __abstract__ = True
 
-    @staticmethod
-    def __field__(**kwargs):
-        return graphjoiner.field(**kwargs)
-
 
 class RootType(ObjectType):
     __abstract__ = True
@@ -78,11 +74,8 @@ class FieldDefinition(object):
         return self._value
 
 
-def field(func=None, **kwargs):
-    if callable(func):
-        return LazyFieldDefinition(func, **kwargs)
-    else:
-        return SimpleFieldDefinition(**kwargs)
+def field(**kwargs):
+    return SimpleFieldDefinition(**kwargs)
 
 
 class SimpleFieldDefinition(FieldDefinition):
@@ -90,7 +83,7 @@ class SimpleFieldDefinition(FieldDefinition):
         self._kwargs = kwargs
 
     def instantiate(self):
-        return self._owner.__field__(**self._kwargs)
+        return graphjoiner.field(**self._kwargs)
 
 
 def relationship_builder(build_relationship):

@@ -7,7 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
 from graphjoiner.declarative import executor, extract, field, RootType, ObjectType, single, many
-from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, select, sql_join, sql_value_join
+from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, select, sql_join, sql_value_join, column_field
 from .execution_test_cases import ExecutionTestCases
 from .matchers import is_successful_result
 
@@ -41,8 +41,8 @@ def evaluate(func):
 class Author(SqlAlchemyObjectType):
     __model__ = AuthorRecord
 
-    id = field(column=AuthorRecord.c_id)
-    name = field(column=AuthorRecord.c_name)
+    id = column_field(AuthorRecord.c_id)
+    name = column_field(AuthorRecord.c_name)
     books = many(lambda: sql_join(Book))
     book_titles = extract(books, "title")
 
@@ -50,9 +50,9 @@ class Author(SqlAlchemyObjectType):
 class Book(SqlAlchemyObjectType):
     __model__ = BookRecord
 
-    id = field(column=BookRecord.c_id)
-    title = field(column=BookRecord.c_title)
-    author_id = field(column=BookRecord.c_author_id)
+    id = column_field(column=BookRecord.c_id)
+    title = column_field(column=BookRecord.c_title)
+    author_id = column_field(column=BookRecord.c_author_id)
     author = single(lambda: sql_join(Author))
     books_by_same_author = extract(author, "books")
 
