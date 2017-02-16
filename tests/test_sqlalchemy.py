@@ -1,11 +1,13 @@
+from __future__ import unicode_literals
+
 from graphql import GraphQLInt, GraphQLString
 from hamcrest import assert_that
 from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from graphjoiner.declarative import executor, extract, field, single, many, RootType, ObjectType
-from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
+from graphjoiner.declarative import executor, extract, field, RootType, ObjectType, single, many
+from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, select, sql_join, sql_value_join
 from .execution_test_cases import ExecutionTestCases
 from .matchers import is_successful_result
 
@@ -41,7 +43,7 @@ class Author(SqlAlchemyObjectType):
 
     id = field(column=AuthorRecord.c_id)
     name = field(column=AuthorRecord.c_name)
-    books = field(lambda: many(Book))
+    books = many(lambda: sql_join(Book))
     book_titles = extract(books, "title")
 
 
@@ -51,10 +53,10 @@ class Book(SqlAlchemyObjectType):
     id = field(column=BookRecord.c_id)
     title = field(column=BookRecord.c_title)
     author_id = field(column=BookRecord.c_author_id)
-    author = single(Author)
+    author = single(lambda: sql_join(Author))
     books_by_same_author = extract(author, "books")
 
-    sales = field(lambda: single(Sales, {Book.title: Sales.book_title}))
+    sales = single(lambda: sql_value_join(Sales, {Book.title: Sales.book_title}))
 
 
 class Sales(ObjectType):
@@ -71,14 +73,14 @@ class Sales(ObjectType):
 
 
 class Root(RootType):
-    books = many(Book)
-    book = single(Book)
+    books = many(lambda: select(Book))
+    book = single(lambda: select(Book))
 
     @book.arg("id", GraphQLInt)
     def book_id(query, book_id):
         return query.filter(BookRecord.c_id == book_id)
 
-    author = single(Author)
+    author = single(lambda: select(Author))
 
     @author.arg("id", GraphQLInt)
     def author_id(query, author_id):

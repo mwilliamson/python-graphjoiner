@@ -2,15 +2,21 @@ import attr
 from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
 from hamcrest import assert_that
 
-from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract
+from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract, relationship_builder
 from ..matchers import is_successful_result
 
 
 class StaticDataObjectType(ObjectType):
-    @classmethod
-    def __select_all__(cls):
-        return cls.__records__
+    __abstract__ = True
 
+    @staticmethod
+    @relationship_builder
+    def select(local, target):
+        def generate_select(parent_select, context):
+            return target.__records__
+
+        return generate_select, {}
+    
     @classmethod
     def __fetch_immediates__(cls, selections, records, context):
         return [
@@ -21,7 +27,6 @@ class StaticDataObjectType(ObjectType):
             for record in records
         ]
 
-
 def test_single_relationship_is_resolved_to_null_if_there_are_no_matching_results():
     class Author(StaticDataObjectType):
         __records__ = []
@@ -29,7 +34,7 @@ def test_single_relationship_is_resolved_to_null_if_there_are_no_matching_result
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author = single(Author)
+        author = single(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("{ author { name } }")
     assert_that(result, is_successful_result(data={
@@ -46,7 +51,7 @@ def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_match
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author = single(Author)
+        author = single(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("{ author { name } }")
     assert_that(result, is_successful_result(data={
@@ -61,7 +66,7 @@ def test_first_or_none_relationship_is_resolved_to_null_if_there_are_no_matching
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author = first_or_none(Author)
+        author = first_or_none(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("{ author { name } }")
     assert_that(result, is_successful_result(data={
@@ -78,7 +83,7 @@ def test_first_or_none_relationship_is_resolved_to_object_if_there_is_exactly_on
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author = first_or_none(Author)
+        author = first_or_none(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("{ author { name } }")
     assert_that(result, is_successful_result(data={
@@ -95,7 +100,7 @@ def test_first_or_none_relationship_is_resolved_to_first_object_if_there_is_more
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author = first_or_none(Author)
+        author = first_or_none(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("{ author { name } }")
     assert_that(result, is_successful_result(data={
@@ -112,7 +117,7 @@ def test_relationships_can_take_filter_argument_to_refine_select():
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        authors = many(Author, filter=lambda values: values[:1])
+        authors = many(lambda: StaticDataObjectType.select(Author, filter=lambda values: values[:1]))
 
     result = executor(Root)("{ authors { name } }")
     assert_that(result, is_successful_result(data={
@@ -129,7 +134,7 @@ def test_can_extract_fields_from_relationships():
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        authors = many(Author)
+        authors = many(lambda: StaticDataObjectType.select(Author))
         author_names = extract(authors, "name")
 
     result = executor(Root)("{ authorNames }")
@@ -147,7 +152,7 @@ def test_can_extract_fields_from_anonymous_fields():
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author_names = extract(many(Author), "name")
+        author_names = extract(many(lambda: StaticDataObjectType.select(Author)), "name")
 
     result = executor(Root)("{ authorNames }")
     assert_that(result, is_successful_result(data={
@@ -170,7 +175,7 @@ def test_can_implement_interfaces():
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author = single(Author)
+        author = single(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("""{
         author {

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Query
 
 import graphjoiner
 from graphjoiner import declarative
-from . import ObjectType
+from . import ObjectType, relationship_builder
 
 
 class SqlAlchemyObjectType(ObjectType):
@@ -31,26 +31,6 @@ class SqlAlchemyObjectType(ObjectType):
         return Query([]).select_from(cls.__model__)
 
     @classmethod
-    def __relationship__(cls, target, join=None):
-        if issubclass(target, SqlAlchemyObjectType):
-            return _relationship_to_sqlalchemy(cls, target, join=join)
-        elif join is None:
-            raise Exception("join must be explicitly set when joining to non-SQLAlchemy types")
-        else:
-            def select(parent_select, context):
-                return parent_select.with_entities(*(
-                        local_field.column.label(remote_field.attr_name)
-                        for local_field, remote_field in six.iteritems(join)
-                    )) \
-                    .with_session(context.session) \
-                    .all()
-
-            return select, dict(
-                (local_field.field_name, remote_field.field_name)
-                for local_field, remote_field in six.iteritems(join)
-            )
-
-    @classmethod
     def __fetch_immediates__(cls, selections, query, context):
         query = query.with_entities(*(
             selection.field.column
@@ -62,7 +42,34 @@ class SqlAlchemyObjectType(ObjectType):
         return query.distinct().with_session(context.session).all()
 
 
-def _relationship_to_sqlalchemy(local, target, join):
+@relationship_builder
+def select(local, target):
+    def generate_select(parent_select, context):
+        return target.__select_all__()
+
+    return generate_select, {}
+    
+
+@relationship_builder
+def sql_value_join(local, target, join):
+    def select(parent_select, context):
+        return parent_select.with_entities(*(
+                local_field.column.label(remote_field.attr_name)
+                for local_field, remote_field in six.iteritems(join)
+            )) \
+            .with_session(context.session) \
+            .all()
+
+    join_fields = dict(
+        (local_field.field_name, remote_field.field_name)
+        for local_field, remote_field in six.iteritems(join)
+    )
+    
+    return select, join_fields
+
+
+@relationship_builder
+def sql_join(local, target, join=None):
     if join is None:
         local_field_definition, remote_field_definition = _find_foreign_key(local, target)
         local_field = local_field_definition.field()

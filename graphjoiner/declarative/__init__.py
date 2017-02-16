@@ -1,4 +1,3 @@
-from functools import partial
 import re
 
 from graphql import GraphQLArgument
@@ -56,13 +55,6 @@ class RootType(ObjectType):
     def __fetch_immediates__(*args):
         return [()]
 
-    @staticmethod
-    def __relationship__(target, join):
-        def select(parent_select, context):
-            return target.__select_all__()
-
-        return select, {}
-
 
 class FieldDefinition(object):
     # TODO: make sure _owner isn't overwritten once set
@@ -101,31 +93,38 @@ class SimpleFieldDefinition(FieldDefinition):
         return self._owner.__field__(**self._kwargs)
 
 
-def _relationship_definition(func, target, join=None, filter=None):
-    return RelationshipDefinition(
-        func=func,
-        target=target,
-        join=join,
-        filter=filter,
-    )
+def relationship_builder(build_relationship):
+    def wrapped(target, *args, **kwargs):
+        filter = kwargs.pop("filter", None)
+        return lambda func: RelationshipDefinition(
+            func=func,
+            target=target,
+            filter=filter,
+            relationship=lambda local: build_relationship(local, target, *args, **kwargs),
+        )
+    
+    return wrapped
 
 
-first_or_none = partial(_relationship_definition, graphjoiner.first_or_none)
-single = partial(_relationship_definition, graphjoiner.single)
-many = partial(_relationship_definition, graphjoiner.many)
+def first_or_none(func):
+    return LazyFieldDefinition(lambda: func()(graphjoiner.first_or_none))
+def single(func):
+    return LazyFieldDefinition(lambda: func()(graphjoiner.single))
+def many(func):
+    return LazyFieldDefinition(lambda: func()(graphjoiner.many))
 
 
 class RelationshipDefinition(FieldDefinition):
-    def __init__(self, func, target, join, filter):
+    def __init__(self, func, target, filter, relationship):
         self._func = func
         self._target = target
-        self._join = join
         self._filter = filter
+        self._relationship = relationship
         self._args = []
 
     def instantiate(self):
-        generate_select, join = self._owner.__relationship__(self._target, self._join)
-
+        generate_select, join = self._relationship(self._owner)
+        
         def generate_select_with_args(args, parent_select, context):
             select = generate_select(parent_select, context)
 
@@ -143,7 +142,6 @@ class RelationshipDefinition(FieldDefinition):
             for arg_name, arg_type, _ in self._args
         )
 
-        # TODO: in general join selection needs to consider both sides of the relationship
         return self._func(self._target.__graphjoiner__, generate_select_with_args, join=join, args=args)
 
     def arg(self, arg_name, arg_type):

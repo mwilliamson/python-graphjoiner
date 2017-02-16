@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from graphjoiner.declarative import executor, field, many, RootType
 from graphjoiner.declarative.sqlalchemy import (
     SqlAlchemyObjectType,
+    select,
+    sql_join,
     _find_join_candidates,
     _sql_type_to_graphql_type,
 )
@@ -37,7 +39,7 @@ def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_
 
         id = field(column=AuthorRecord.c_id)
         name = field(column=AuthorRecord.c_name)
-        books = field(lambda: many(Book, join={Author.id: Book.author_id}))
+        books = many(lambda: sql_join(Book, join={Author.id: Book.author_id}))
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
@@ -47,7 +49,7 @@ def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_
         author_id = field(column=BookRecord.c_author_id)
 
     class Root(RootType):
-        authors = many(Author)
+        authors = many(lambda: select(Author))
 
     engine = create_engine("sqlite:///:memory:")
 
@@ -98,7 +100,7 @@ def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalche
         id_1 = field(column=AuthorRecord.c_id_1)
         id_2 = field(column=AuthorRecord.c_id_2)
         name = field(column=AuthorRecord.c_name)
-        books = field(lambda: many(Book, join={
+        books = many(lambda: sql_join(Book, join={
             Author.id_1: Book.author_id_1,
             Author.id_2: Book.author_id_2,
         }))
@@ -112,7 +114,7 @@ def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalche
         author_id_2 = field(column=BookRecord.c_author_id_2)
 
     class Root(RootType):
-        authors = many(Author)
+        authors = many(lambda: select(Author))
 
     engine = create_engine("sqlite:///:memory:")
 
@@ -198,7 +200,7 @@ def test_can_explicitly_set_primary_key():
         name = field(column=AuthorRecord.c_name)
 
     class Root(RootType):
-        authors = many(Author)
+        authors = many(lambda: select(Author))
 
     engine = create_engine("sqlite:///:memory:")
 

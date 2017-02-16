@@ -66,7 +66,7 @@ We then define object types for the root, books and authors:
 
     from graphql import GraphQLString
     from graphjoiner.declarative import RootType, single, many, field
-    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, select, sql_join
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
@@ -81,10 +81,10 @@ We then define object types for the root, books and authors:
         title = field(column=BookRecord.title)
         genre = field(column=BookRecord.genre)
         author_id = field(column=BookRecord.author_id)
-        author = field(lambda: single(Author))
+        author = single(lambda: sql_join(Author))
 
     class Root(RootType):
-        books = field(lambda: many(Book))
+        books = many(lambda: select(Book))
         
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
@@ -176,7 +176,7 @@ Next is the definition of ``Book``:
         title = field(column=BookRecord.title)
         genre = field(column=BookRecord.genre)
         author_id = field(column=BookRecord.author_id)
-        author = field(lambda: single(Author))
+        author = single(lambda: sql_join(Author))
 
 As before, we inherit from ``SqlAlchemyObjectType``,
 set ``__model__`` to the appropriate class,
@@ -189,29 +189,27 @@ To override this behaviour, you can pass in an explicit ``join`` argument:
 
 .. code-block:: python
 
-    author = field(lambda: single(Author, join={Book.author_id: Author.id}))
+    author = single(lambda: sql_join(Author, join={Book.author_id: Author.id}))
 
 This explicitly tells GraphJoiner that authors can be joined to books
 by equality between the fields ``Book.author_id`` and ``Author.id``.
 When defining relationships such as this,
-we call ``field()`` with a lambda to defer evaluation until all of the types and fields have been defined.
+we call ``single()`` with a lambda to defer evaluation until all of the types and fields have been defined.
 
 Finally, we can create a root object:
 
 .. code-block:: python
 
     class Root(RootType):
-        books = many(Book)
+        books = many(lambda: select(Book))
         
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
             return query.filter(BookRecord.genre == genre)
 
-The root has only one field, ``books``, a one-to-many relationship,
-which we define using ``many()``.
-As with ``single()``, we pass in the type we want to join to as the first argument, in this case ``Book``.
-By default, a relationship from a root will select all possible instances.
-In this case, this means that ``books`` represents all of the books in the database.
+The root has only one field, ``books``, which we define using ``many()``.
+Using ``select`` tells GraphJoiner to select all of the books in the database,
+rather than trying to perform a join.
 
 Using ``books.arg()`` adds an optional argument to the field.
 
@@ -225,7 +223,7 @@ we can request the books by an author:
         
         id = field(column=AuthorRecord.id)
         name = field(column=AuthorRecord.name)
-        books = field(lambda: many(Book))
+        books = many(lambda: sql_join(Book))
 
 Core Example
 ------------

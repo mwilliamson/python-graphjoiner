@@ -43,7 +43,7 @@ def test_example():
 
     from graphql import GraphQLString
     from graphjoiner.declarative import RootType, single, many, field
-    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, select, sql_join
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
@@ -58,10 +58,10 @@ def test_example():
         title = field(column=BookRecord.title)
         genre = field(column=BookRecord.genre)
         author_id = field(column=BookRecord.author_id)
-        author = field(lambda: single(Author))
+        author = single(lambda: sql_join(Author))
 
     class Root(RootType):
-        books = field(lambda: many(Book))
+        books = many(lambda: select(Book))
         
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
