@@ -45,6 +45,11 @@ def column_field(column, type=None):
 def select(local, target, join_query=None, join_fields=None):
     if join_fields is None:
         join_fields = {}
+    else:
+        join_fields = dict(
+            (local_field.field_name, remote_field.field_name)
+            for local_field, remote_field in six.iteritems(join_fields)
+        )
 
     def generate_select(parent_select, context):
         target_select = target.__select_all__()

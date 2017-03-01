@@ -176,9 +176,7 @@ def test_can_explicitly_set_join_query_between_sqlalchemy_objects():
         books = many(lambda: select(
             Book,
             join_query=Author._author_to_books,
-            # TODO: change to
-            # join_fields={Author.id: Book.author_id},
-            join_fields={"id": "authorId"},
+            join_fields={Author.id: Book.author_id},
         ))
 
     class Book(SqlAlchemyObjectType):
