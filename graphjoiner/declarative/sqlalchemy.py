@@ -39,15 +39,22 @@ def column_field(column, type=None):
         column=column,
         type=type,
     )
-    
+
 
 @relationship_builder
-def select(local, target):
-    def generate_select(parent_select, context):
-        return target.__select_all__()
+def select(local, target, join_query=None, join_fields=None):
+    if join_fields is None:
+        join_fields = {}
 
-    return generate_select, {}
-    
+    def generate_select(parent_select, context):
+        target_select = target.__select_all__()
+        if join_query is None:
+            return target_select
+        else:
+            return join_query(parent_select, target_select)
+
+    return generate_select, join_fields
+
 
 @relationship_builder
 def sql_value_join(local, target, join):
@@ -63,7 +70,7 @@ def sql_value_join(local, target, join):
         (local_field.field_name, remote_field.field_name)
         for local_field, remote_field in six.iteritems(join)
     )
-    
+
     return select, join_fields
 
 

@@ -145,6 +145,77 @@ def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalche
     }))
 
 
+def test_can_explicitly_set_join_query_between_sqlalchemy_objects():
+    Base = declarative_base()
+
+    class AuthorRecord(Base):
+        __tablename__ = "author"
+
+        c_id = Column(Integer, primary_key=True)
+        c_name = Column(Unicode, nullable=False)
+
+    class BookRecord(Base):
+        __tablename__ = "book"
+
+        c_id = Column(Integer, primary_key=True)
+        c_title = Column(Unicode, nullable=False)
+        c_author_id = Column(Integer)
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+
+        id = column_field(AuthorRecord.c_id)
+        name = column_field(AuthorRecord.c_name)
+
+        @staticmethod
+        def _author_to_books(author_query, book_query):
+            authors = author_query.add_columns(AuthorRecord.c_id).subquery()
+            return book_query \
+                .join(authors, authors.c.c_id == BookRecord.c_author_id)
+
+        books = many(lambda: select(
+            Book,
+            join_query=Author._author_to_books,
+            # TODO: change to
+            # join_fields={Author.id: Book.author_id},
+            join_fields={"id": "authorId"},
+        ))
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+
+        id = column_field(BookRecord.c_id)
+        title = column_field(BookRecord.c_title)
+        author_id = column_field(BookRecord.c_author_id)
+
+    class Root(RootType):
+        authors = many(lambda: select(Author))
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    session = Session(engine)
+    session.add(AuthorRecord(c_name="PG Wodehouse"))
+    session.add(AuthorRecord(c_name="Joseph Heller"))
+    session.add(BookRecord(c_title="Leave It to Psmith", c_author_id=1))
+    session.add(BookRecord(c_title="Catch-22", c_author_id=2))
+    session.commit()
+
+    result = executor(Root)("""{
+        authors {
+            name
+            books { title }
+        }
+    }""", context=QueryContext(session=session))
+    assert_that(result, is_successful_result(data={
+        "authors": [
+            {"name": "PG Wodehouse", "books": [{"title": "Leave It to Psmith"}]},
+            {"name": "Joseph Heller", "books": [{"title": "Catch-22"}]},
+        ],
+    }))
+
+
 def test_hybrid_properties_are_ignored_when_scanning_for_foreign_keys():
     Base = declarative_base()
 
