@@ -1,3 +1,4 @@
+from functools import partial
 import re
 
 from graphql import GraphQLArgument
@@ -95,16 +96,16 @@ def relationship_builder(build_relationship):
             filter=filter,
             relationship=lambda local: build_relationship(local, target, *args, **kwargs),
         )
-    
+
     return wrapped
 
 
-def first_or_none(func):
-    return LazyFieldDefinition(lambda: func()(graphjoiner.first_or_none))
-def single(func):
-    return LazyFieldDefinition(lambda: func()(graphjoiner.single))
-def many(func):
-    return LazyFieldDefinition(lambda: func()(graphjoiner.many))
+def relationship(select_values, relationship_type):
+    return LazyFieldDefinition(lambda: select_values()(relationship_type))
+
+first_or_none = partial(relationship, relationship_type=graphjoiner.first_or_none)
+single = partial(relationship, relationship_type=graphjoiner.single)
+many = partial(relationship, relationship_type=graphjoiner.many)
 
 
 class RelationshipDefinition(FieldDefinition):
@@ -117,7 +118,7 @@ class RelationshipDefinition(FieldDefinition):
 
     def instantiate(self):
         generate_select, join = self._relationship(self._owner)
-        
+
         def generate_select_with_args(args, parent_select, context):
             select = generate_select(parent_select, context)
 
