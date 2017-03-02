@@ -43,8 +43,8 @@ def column_field(column, type=None):
 
 @join_builder
 def sql_value_join(local, target, join):
-    def select(parent_select, context):
-        return parent_select.with_entities(*(
+    def build_query(parent_query, context):
+        return parent_query.with_entities(*(
                 local_field.column.label(remote_field.attr_name)
                 for local_field, remote_field in six.iteritems(join)
             )) \
@@ -56,7 +56,7 @@ def sql_value_join(local, target, join):
         for local_field, remote_field in six.iteritems(join)
     )
 
-    return select, join_fields
+    return build_query, join_fields
 
 
 @join_builder
@@ -69,8 +69,8 @@ def sql_join(local, target, join=None):
     else:
         join = join.copy()
 
-    def select(parent_select, context):
-        parents = parent_select \
+    def build_query(parent_query, context):
+        parents = parent_query \
             .with_entities(*(
                 local_field.column
                 for local_field in join.keys()
@@ -83,7 +83,7 @@ def sql_join(local, target, join=None):
                 for parent_column, remote_field in zip(parents.c.values(), join.values())
             ))
 
-    return select, dict(
+    return build_query, dict(
         (local_field.field_name, remote_field.field_name)
         for local_field, remote_field in join.items()
     )

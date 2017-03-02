@@ -103,9 +103,9 @@ def relationship(join=None, args=None, **kwargs):
 
 
 class Relationship(FieldBase):
-    def __init__(self, target, process_results, wrap_type, select, join, args):
+    def __init__(self, target, process_results, wrap_type, build_query, join, args):
         self.target = target
-        self.select = select
+        self.build_query = build_query
         self.join = join
         self.args = args
         self._process_results = process_results
@@ -113,11 +113,11 @@ class Relationship(FieldBase):
 
         self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self.join.keys())
 
-    def copy(self, target=None, select=None, join=None, args=None):
+    def copy(self, target=None, build_query=None, join=None, args=None):
         if target is None:
             target = self.target
-        if select is None:
-            select = self.select
+        if build_query is None:
+            build_query = self.build_query
         if join is None:
             join = self.join
         if args is None:
@@ -125,7 +125,7 @@ class Relationship(FieldBase):
 
         return Relationship(
             target=target,
-            select=select,
+            build_query=build_query,
             join=join,
             args=args,
             wrap_type=self._wrap_type,
@@ -139,8 +139,8 @@ class Relationship(FieldBase):
             for field_name, key in zip(self.join.keys(), self._parent_join_keys)
         ]
 
-    def fetch(self, request, select_parent):
-        select = self.select(request.args, select_parent, request.context)
+    def fetch(self, request, parent_query):
+        query = self.build_query(request.args, parent_query, request.context)
         join_fields = self.target.join_fields()
         join_selections = [
             Request(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
@@ -148,7 +148,7 @@ class Relationship(FieldBase):
         ]
 
         child_request = assoc(request, join_selections=join_selections)
-        results = self.target.fetch(child_request, select)
+        results = self.target.fetch(child_request, query)
         return RelationshipResults(
             results=results,
             process_results=self._process_results,
@@ -195,10 +195,10 @@ class RelationshipResults(object):
         return self._process_results(self._results.get(self._parent_join_values(key), []))
 
 
-def single(target, select, **kwargs):
+def single(target, build_query, **kwargs):
     return relationship(
         target=target,
-        select=select,
+        build_query=build_query,
         process_results=_one_or_none,
         wrap_type=lambda graphql_type: graphql_type,
         **kwargs
@@ -214,10 +214,10 @@ def _one_or_none(values):
         return values[0]
 
 
-def first_or_none(target, select, **kwargs):
+def first_or_none(target, build_query, **kwargs):
     return relationship(
         target=target,
-        select=select,
+        build_query=build_query,
         process_results=_first_or_none,
         wrap_type=lambda graphql_type: graphql_type,
         **kwargs
@@ -231,10 +231,10 @@ def _first_or_none(values):
         return values[0]
 
 
-def many(target, select, **kwargs):
+def many(target, build_query, **kwargs):
     return relationship(
         target=target,
-        select=select,
+        build_query=build_query,
         process_results=lambda x: x,
         wrap_type=lambda graphql_type: GraphQLList(graphql_type),
         **kwargs
@@ -267,9 +267,9 @@ class ScalarJoinType(Value):
     def join_fields(self):
         return self._target.join_fields()
 
-    def fetch(self, request, select):
+    def fetch(self, request, query):
         field_request = Request(key=self._field_name, field=self._field, selections=request.selections, context=request.context)
-        results = self._target.fetch(assoc(request, selections=[field_request]), select)
+        results = self._target.fetch(assoc(request, selections=[field_request]), query)
         return [
             Result(value=result.value[self._field_name], join_values=result.join_values)
             for result in results
@@ -299,7 +299,7 @@ class JoinType(Value):
     def join_fields(self):
         return self.fields()
 
-    def fetch(self, request, select):
+    def fetch(self, request, query):
         (relationship_selections, requested_immediate_selections) = partition(
             lambda selection: isinstance(selection.field, Relationship),
             request.selections,
@@ -321,11 +321,11 @@ class JoinType(Value):
 
         results = [
             dict(zip(keys, row))
-            for row in self._fetch_immediates(immediate_selections, select, request.context)
+            for row in self._fetch_immediates(immediate_selections, query, request.context)
         ]
 
         for selection in relationship_selections:
-            children = selection.field.fetch(selection, select)
+            children = selection.field.fetch(selection, query)
             for result in results:
                 result[selection.key] = children.get(result)
 

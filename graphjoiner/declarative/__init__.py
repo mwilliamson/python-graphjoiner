@@ -117,30 +117,30 @@ class RelationshipDefinition(FieldDefinition):
         self._args = []
 
     def instantiate(self):
-        generate_select, join = self._build_join(self._owner)
+        build_query, join = self._build_join(self._owner)
 
-        def generate_select_with_args(args, parent_select, context):
-            select = generate_select(parent_select, context)
+        def build_query_with_args(args, parent_query, context):
+            query = build_query(parent_query, context)
 
             if self._filter is not None:
-                select = self._filter(select)
+                query = self._filter(query)
 
-            for arg_name, _, refine_select in self._args:
+            for arg_name, _, refine_query in self._args:
                 if arg_name in args:
-                    select = refine_select(select, args[arg_name])
+                    query = refine_query(query, args[arg_name])
 
-            return select
+            return query
 
         args = dict(
             (arg_name, GraphQLArgument(arg_type))
             for arg_name, arg_type, _ in self._args
         )
 
-        return self._func(self._target.__graphjoiner__, generate_select_with_args, join=join, args=args)
+        return self._func(self._target.__graphjoiner__, build_query_with_args, join=join, args=args)
 
     def arg(self, arg_name, arg_type):
-        def add_arg(refine_select):
-            self._args.append((arg_name, arg_type, refine_select))
+        def add_arg(refine_query):
+            self._args.append((arg_name, arg_type, refine_query))
 
         return add_arg
 
@@ -178,8 +178,8 @@ class LazyFieldDefinition(FieldDefinition):
         return field_definition.__get__(None, self._owner)
 
     def arg(self, arg_name, arg_type):
-        def add_arg(refine_select):
-            self._setup.append(lambda field: field.arg(arg_name, arg_type)(refine_select))
+        def add_arg(refine_query):
+            self._setup.append(lambda field: field.arg(arg_name, arg_type)(refine_query))
 
         return add_arg
 
@@ -199,11 +199,11 @@ def select(local, target, join_query=None, join_fields=None):
             for local_field, remote_field in six.iteritems(join_fields)
         )
 
-    def generate_select(parent_select, context):
-        target_select = target.__select_all__()
+    def build_query(parent_query, context):
+        target_query = target.__select_all__()
         if join_query is None:
-            return target_select
+            return target_query
         else:
-            return join_query(parent_select, target_select)
+            return join_query(parent_query, target_query)
 
-    return generate_select, join_fields
+    return build_query, join_fields
