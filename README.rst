@@ -32,7 +32,7 @@ Installation
 ::
 
     pip install graphjoiner
-    
+
 Example
 -------
 
@@ -65,18 +65,18 @@ We then define object types for the root, books and authors:
 .. code-block:: python
 
     from graphql import GraphQLString
-    from graphjoiner.declarative import RootType, single, many
-    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, column_field, select, sql_join
+    from graphjoiner.declarative import RootType, single, many, select
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, column_field, sql_join
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
-        
+
         id = column_field(AuthorRecord.id)
         name = column_field(AuthorRecord.name)
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
-        
+
         id = column_field(BookRecord.id)
         title = column_field(BookRecord.title)
         genre = column_field(BookRecord.genre)
@@ -85,7 +85,7 @@ We then define object types for the root, books and authors:
 
     class Root(RootType):
         books = many(lambda: select(Book))
-        
+
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
             return query.filter(BookRecord.genre == genre)
@@ -153,7 +153,7 @@ Let's break things down a little, starting with the definition of ``Author``:
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
-        
+
         id = column_field(AuthorRecord.id)
         name = column_field(AuthorRecord.name)
 
@@ -171,7 +171,7 @@ Next is the definition of ``Book``:
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
-        
+
         id = column_field(BookRecord.id)
         title = column_field(BookRecord.title)
         genre = column_field(BookRecord.genre)
@@ -202,7 +202,7 @@ Finally, we can create a root object:
 
     class Root(RootType):
         books = many(lambda: select(Book))
-        
+
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
             return query.filter(BookRecord.genre == genre)
@@ -220,7 +220,7 @@ we can request the books by an author:
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
-        
+
         id = column_field(AuthorRecord.id)
         name = column_field(AuthorRecord.name)
         books = many(lambda: sql_join(Book))

@@ -42,18 +42,18 @@ def test_example():
 
 
     from graphql import GraphQLString
-    from graphjoiner.declarative import RootType, single, many
-    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, column_field, select, sql_join
+    from graphjoiner.declarative import RootType, single, many, select
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, column_field, sql_join
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
-        
+
         id = column_field(AuthorRecord.id)
         name = column_field(AuthorRecord.name)
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
-        
+
         id = column_field(BookRecord.id)
         title = column_field(BookRecord.title)
         genre = column_field(BookRecord.genre)
@@ -62,7 +62,7 @@ def test_example():
 
     class Root(RootType):
         books = many(lambda: select(Book))
-        
+
         @books.arg("genre", GraphQLString)
         def books_arg_genre(query, genre):
             return query.filter(BookRecord.genre == genre)
@@ -73,8 +73,8 @@ def test_example():
     from graphjoiner.declarative import executor
 
     execute = executor(Root)
-    
-    
+
+
 
     query = """
         {

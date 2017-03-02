@@ -7,11 +7,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session
 
-from graphjoiner.declarative import executor, many, RootType
+from graphjoiner.declarative import executor, many, RootType, select
 from graphjoiner.declarative.sqlalchemy import (
     SqlAlchemyObjectType,
     column_field,
-    select,
     sql_join,
     _find_join_candidates,
     _sql_type_to_graphql_type,

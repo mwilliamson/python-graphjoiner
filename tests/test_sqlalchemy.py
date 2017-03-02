@@ -6,8 +6,8 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from graphjoiner.declarative import executor, extract, field, RootType, ObjectType, single, many
-from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, select, sql_join, sql_value_join, column_field
+from graphjoiner.declarative import executor, extract, field, RootType, ObjectType, single, many, select
+from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, sql_join, sql_value_join, column_field
 from .execution_test_cases import ExecutionTestCases
 from .matchers import is_successful_result
 

@@ -187,3 +187,23 @@ class LazyFieldDefinition(FieldDefinition):
 
 def _snake_case_to_camel_case(value):
     return value[0].lower() + re.sub(r"_(.)", lambda match: match.group(1).upper(), value[1:])
+
+
+@relationship_builder
+def select(local, target, join_query=None, join_fields=None):
+    if join_fields is None:
+        join_fields = {}
+    else:
+        join_fields = dict(
+            (local_field.field_name, remote_field.field_name)
+            for local_field, remote_field in six.iteritems(join_fields)
+        )
+
+    def generate_select(parent_select, context):
+        target_select = target.__select_all__()
+        if join_query is None:
+            return target_select
+        else:
+            return join_query(parent_select, target_select)
+
+    return generate_select, join_fields
