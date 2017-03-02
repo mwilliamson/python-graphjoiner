@@ -87,14 +87,14 @@ class SimpleFieldDefinition(FieldDefinition):
         return graphjoiner.field(**self._kwargs)
 
 
-def relationship_builder(build_relationship):
+def join_builder(build_join):
     def wrapped(target, *args, **kwargs):
         filter = kwargs.pop("filter", None)
         return lambda func: RelationshipDefinition(
             func=func,
             target=target,
             filter=filter,
-            relationship=lambda local: build_relationship(local, target, *args, **kwargs),
+            build_join=lambda local: build_join(local, target, *args, **kwargs),
         )
 
     return wrapped
@@ -109,15 +109,15 @@ many = partial(relationship, relationship_type=graphjoiner.many)
 
 
 class RelationshipDefinition(FieldDefinition):
-    def __init__(self, func, target, filter, relationship):
+    def __init__(self, func, target, filter, build_join):
         self._func = func
         self._target = target
         self._filter = filter
-        self._relationship = relationship
+        self._build_join = build_join
         self._args = []
 
     def instantiate(self):
-        generate_select, join = self._relationship(self._owner)
+        generate_select, join = self._build_join(self._owner)
 
         def generate_select_with_args(args, parent_select, context):
             select = generate_select(parent_select, context)
@@ -189,7 +189,7 @@ def _snake_case_to_camel_case(value):
     return value[0].lower() + re.sub(r"_(.)", lambda match: match.group(1).upper(), value[1:])
 
 
-@relationship_builder
+@join_builder
 def select(local, target, join_query=None, join_fields=None):
     if join_fields is None:
         join_fields = {}

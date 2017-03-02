@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy.orm import Query
 
 from graphjoiner import declarative
-from . import field, ObjectType, relationship_builder
+from . import field, ObjectType, join_builder
 
 
 class SqlAlchemyObjectType(ObjectType):
@@ -41,7 +41,7 @@ def column_field(column, type=None):
     )
 
 
-@relationship_builder
+@join_builder
 def sql_value_join(local, target, join):
     def select(parent_select, context):
         return parent_select.with_entities(*(
@@ -59,7 +59,7 @@ def sql_value_join(local, target, join):
     return select, join_fields
 
 
-@relationship_builder
+@join_builder
 def sql_join(local, target, join=None):
     if join is None:
         local_field_definition, remote_field_definition = _find_foreign_key(local, target)

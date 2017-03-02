@@ -2,7 +2,7 @@ import attr
 from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
 from hamcrest import assert_that
 
-from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract, relationship_builder
+from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract, join_builder
 from ..matchers import is_successful_result
 
 
@@ -10,13 +10,13 @@ class StaticDataObjectType(ObjectType):
     __abstract__ = True
 
     @staticmethod
-    @relationship_builder
+    @join_builder
     def select(local, target):
         def generate_select(parent_select, context):
             return target.__records__
 
         return generate_select, {}
-    
+
     @classmethod
     def __fetch_immediates__(cls, selections, records, context):
         return [
