@@ -215,3 +215,30 @@ def test_can_implement_declarative_interfaces():
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
+
+def test_interfaces_can_be_declared_using_function():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __interfaces__ = lambda: [HasName]
+
+        __records__ = [AuthorRecord("PG Wodehouse")]
+
+        name = field(type=GraphQLString)
+
+    class HasName(InterfaceType):
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("""{
+        author {
+            ...on HasName {
+                name
+            }
+        }
+    }""")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))

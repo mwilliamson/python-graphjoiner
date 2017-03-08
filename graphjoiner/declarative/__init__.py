@@ -1,3 +1,4 @@
+import collections
 from functools import partial
 import re
 
@@ -24,7 +25,7 @@ class ObjectTypeMeta(type):
             name=cls.__name__,
             fields=fields,
             fetch_immediates=cls.__fetch_immediates__,
-            interfaces=_declare_interfaces(attrs),
+            interfaces=lambda: _declare_interfaces(attrs),
         )
 
         return cls
@@ -49,6 +50,8 @@ def _declare_fields(cls):
 
 def _declare_interfaces(attrs):
     interfaces = attrs.get("__interfaces__", [])
+    if not isinstance(interfaces, collections.Iterable):
+        interfaces = interfaces()
 
     def to_graphql_core_interface(interface):
         if isinstance(interface, type) and issubclass(interface, InterfaceType):
