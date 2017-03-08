@@ -266,3 +266,16 @@ def test_field_type_can_be_declared_using_declarative_object_type():
         author = field(type=Author)
 
     assert_that(Book.__graphql__.fields["author"].type, equal_to(Author.__graphql__))
+
+
+def test_field_type_can_be_declared_using_declarative_type_in_lambda():
+    class Book(InterfaceType):
+        author = field(type=lambda: Author)
+
+    class Author(ObjectType):
+        name = field(type=GraphQLString)
+
+        def __fetch_immediates__(cls, selections, query, context):
+            pass
+
+    assert_that(Book.__graphql__.fields["author"].type, equal_to(Author.__graphql__))

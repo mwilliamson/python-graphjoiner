@@ -1,6 +1,7 @@
 import collections
 from functools import partial
 import re
+import types
 
 from graphql import GraphQLArgument, GraphQLInterfaceType
 import six
@@ -112,12 +113,17 @@ class SimpleFieldDefinition(FieldDefinition):
         self._kwargs = kwargs
 
     def instantiate(self):
-        if isinstance(self._type, type) and issubclass(self._type, Type):
-            type_ = self._type.__graphql__
-        else:
-            type_ = self._type
-
+        type_ = _to_graphql_core_type(self._type)
         return graphjoiner.field(type=type_, **self._kwargs)
+
+
+def _to_graphql_core_type(type_):
+    if isinstance(type_, types.LambdaType):
+        return _to_graphql_core_type(type_())
+    elif isinstance(type_, type) and issubclass(type_, Type):
+        return type_.__graphql__
+    else:
+        return type_
 
 
 def join_builder(build_join):
