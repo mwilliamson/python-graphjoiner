@@ -1,7 +1,7 @@
 from functools import partial
 import re
 
-from graphql import GraphQLArgument
+from graphql import GraphQLArgument, GraphQLInterfaceType
 import six
 
 import graphjoiner
@@ -18,27 +18,46 @@ class ObjectTypeMeta(type):
         if attrs.get("__abstract__"):
             return cls
 
-        def fields():
-            return dict(
-                (field_definition.field_name, field_definition.__get__(None, cls))
-                for key, field_definition in six.iteritems(cls.__dict__)
-                if isinstance(field_definition, FieldDefinition)
-            )
+        fields = _declare_fields(cls)
 
         cls.__graphjoiner__ = graphjoiner.JoinType(
             name=cls.__name__,
             fields=fields,
             fetch_immediates=cls.__fetch_immediates__,
-            interfaces=attrs.get("__interfaces__", []),
+            interfaces=_declare_interfaces(attrs),
         )
 
-        for key, field_definition in six.iteritems(cls.__dict__):
-            if isinstance(field_definition, FieldDefinition):
-                field_definition.attr_name = key
-                field_definition.field_name = _snake_case_to_camel_case(key)
-                field_definition._owner = cls
-
         return cls
+
+
+def _declare_fields(cls):
+    def fields():
+        return dict(
+            (field_definition.field_name, field_definition.__get__(None, cls))
+            for key, field_definition in six.iteritems(cls.__dict__)
+            if isinstance(field_definition, FieldDefinition)
+        )
+
+    for key, field_definition in six.iteritems(cls.__dict__):
+        if isinstance(field_definition, FieldDefinition):
+            field_definition.attr_name = key
+            field_definition.field_name = _snake_case_to_camel_case(key)
+            field_definition._owner = cls
+
+    return fields
+
+
+def _declare_interfaces(attrs):
+    interfaces = attrs.get("__interfaces__", [])
+
+    def to_graphql_core_interface(interface):
+        if isinstance(interface, type) and issubclass(interface, InterfaceType):
+            return interface.__graphql__
+        else:
+            return interface
+
+
+    return list(map(to_graphql_core_interface, interfaces))
 
 
 class ObjectType(six.with_metaclass(ObjectTypeMeta)):
@@ -207,3 +226,29 @@ def select(local, target, join_query=None, join_fields=None):
             return join_query(parent_query, target_query)
 
     return build_query, join_fields
+
+
+class InterfaceTypeMeta(type):
+    def __new__(meta, name, bases, attrs):
+        cls = super(InterfaceTypeMeta, meta).__new__(meta, name, bases, attrs)
+        if attrs.get("__abstract__"):
+            return cls
+
+        def fields():
+            fields = _declare_fields(cls)()
+            return dict(
+                (key, field.to_graphql_field())
+                for key, field in six.iteritems(fields)
+            )
+
+        cls.__graphql__ = GraphQLInterfaceType(
+            name=cls.__name__,
+            fields=fields,
+            resolve_type=lambda: None,
+        )
+
+        return cls
+
+
+class InterfaceType(six.with_metaclass(InterfaceTypeMeta)):
+    __abstract__ = True

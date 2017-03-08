@@ -2,7 +2,7 @@ import attr
 from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
 from hamcrest import assert_that
 
-from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract, join_builder
+from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType
 from ..matchers import is_successful_result
 
 
@@ -160,10 +160,38 @@ def test_can_extract_fields_from_anonymous_fields():
     }))
 
 
-def test_can_implement_interfaces():
+def test_can_implement_graphql_core_interfaces():
     HasName = GraphQLInterfaceType("HasName", fields={
         "name": GraphQLField(GraphQLString),
     }, resolve_type=lambda: None)
+
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __interfaces__ = [HasName]
+
+        __records__ = [AuthorRecord("PG Wodehouse")]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("""{
+        author {
+            ...on HasName {
+                name
+            }
+        }
+    }""")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))
+
+
+def test_can_implement_declarative_interfaces():
+    class HasName(InterfaceType):
+        name = field(type=GraphQLString)
 
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
