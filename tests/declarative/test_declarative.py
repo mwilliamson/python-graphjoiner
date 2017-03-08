@@ -1,6 +1,6 @@
 import attr
 from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
-from hamcrest import assert_that
+from hamcrest import assert_that, equal_to
 
 from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType
 from ..matchers import is_successful_result
@@ -216,6 +216,7 @@ def test_can_implement_declarative_interfaces():
         "author": {"name": "PG Wodehouse"},
     }))
 
+
 def test_interfaces_can_be_declared_using_function():
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
@@ -242,3 +243,26 @@ def test_interfaces_can_be_declared_using_function():
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
+
+
+def test_field_type_can_be_declared_using_declarative_interface_type():
+    class Author(InterfaceType):
+        name = field(type=GraphQLString)
+
+    class Book(InterfaceType):
+        author = field(type=Author)
+
+    assert_that(Book.__graphql__.fields["author"].type, equal_to(Author.__graphql__))
+
+
+def test_field_type_can_be_declared_using_declarative_object_type():
+    class Author(ObjectType):
+        name = field(type=GraphQLString)
+
+        def __fetch_immediates__(cls, selections, query, context):
+            pass
+
+    class Book(InterfaceType):
+        author = field(type=Author)
+
+    assert_that(Book.__graphql__.fields["author"].type, equal_to(Author.__graphql__))

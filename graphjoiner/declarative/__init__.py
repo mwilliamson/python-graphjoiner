@@ -13,6 +13,10 @@ def executor(root):
     return graphjoiner.executor(root_type)
 
 
+class Type(object):
+    pass
+
+
 class ObjectTypeMeta(type):
     def __new__(meta, name, bases, attrs):
         cls = super(ObjectTypeMeta, meta).__new__(meta, name, bases, attrs)
@@ -27,6 +31,7 @@ class ObjectTypeMeta(type):
             fetch_immediates=cls.__fetch_immediates__,
             interfaces=lambda: _declare_interfaces(attrs),
         )
+        cls.__graphql__ = cls.__graphjoiner__.to_graphql_type()
 
         return cls
 
@@ -63,7 +68,7 @@ def _declare_interfaces(attrs):
     return list(map(to_graphql_core_interface, interfaces))
 
 
-class ObjectType(six.with_metaclass(ObjectTypeMeta)):
+class ObjectType(six.with_metaclass(ObjectTypeMeta, Type)):
     __abstract__ = True
 
 
@@ -102,11 +107,17 @@ def field(**kwargs):
 
 
 class SimpleFieldDefinition(FieldDefinition):
-    def __init__(self, **kwargs):
+    def __init__(self, type, **kwargs):
+        self._type = type
         self._kwargs = kwargs
 
     def instantiate(self):
-        return graphjoiner.field(**self._kwargs)
+        if isinstance(self._type, type) and issubclass(self._type, Type):
+            type_ = self._type.__graphql__
+        else:
+            type_ = self._type
+
+        return graphjoiner.field(type=type_, **self._kwargs)
 
 
 def join_builder(build_join):
@@ -253,5 +264,5 @@ class InterfaceTypeMeta(type):
         return cls
 
 
-class InterfaceType(six.with_metaclass(InterfaceTypeMeta)):
+class InterfaceType(six.with_metaclass(InterfaceTypeMeta, Type)):
     __abstract__ = True
