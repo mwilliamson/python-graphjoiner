@@ -38,18 +38,30 @@ class ObjectTypeMeta(type):
 
 
 def _declare_fields(cls):
+    def get_field_definitions(key, value):
+        if isinstance(value, FieldDefinition):
+            return ((key, value),)
+        elif isinstance(value, FieldSet):
+            return six.iteritems(value._fields)
+        else:
+            return ()
+
+    field_definitions = [
+        (field_key, field_definition)
+        for key, value in six.iteritems(cls.__dict__)
+        for field_key, field_definition in get_field_definitions(key, value)
+    ]
+
     def fields():
         return dict(
             (field_definition.field_name, field_definition.__get__(None, cls))
-            for key, field_definition in six.iteritems(cls.__dict__)
-            if isinstance(field_definition, FieldDefinition)
+            for key, field_definition in field_definitions
         )
 
-    for key, field_definition in six.iteritems(cls.__dict__):
-        if isinstance(field_definition, FieldDefinition):
-            field_definition.attr_name = key
-            field_definition.field_name = _snake_case_to_camel_case(key)
-            field_definition._owner = cls
+    for key, field_definition in field_definitions:
+        field_definition.attr_name = key
+        field_definition.field_name = _snake_case_to_camel_case(key)
+        field_definition._owner = cls
 
     return fields
 
@@ -272,3 +284,12 @@ class InterfaceTypeMeta(type):
 
 class InterfaceType(six.with_metaclass(InterfaceTypeMeta, Type)):
     __abstract__ = True
+
+
+def field_set(**fields):
+    return FieldSet(fields)
+
+
+class FieldSet(object):
+    def __init__(self, fields):
+        self._fields = fields

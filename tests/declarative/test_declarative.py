@@ -2,7 +2,7 @@ import attr
 from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
 from hamcrest import assert_that, equal_to
 
-from graphjoiner.declarative import executor, field, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType
+from graphjoiner.declarative import executor, field, field_set, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType
 from ..matchers import is_successful_result
 
 
@@ -279,3 +279,30 @@ def test_field_type_can_be_declared_using_declarative_type_in_lambda():
             pass
 
     assert_that(Book.__graphql__.fields["author"].type, equal_to(Author.__graphql__))
+
+
+def test_field_set_can_be_used_to_declare_multiple_fields_in_one_attribute():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+    BookRecord = attr.make_class("BookRecord", ["title"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse")]
+
+        name = field(type=GraphQLString)
+
+    class Book(StaticDataObjectType):
+        __records__ = [BookRecord("Leave it to Psmith")]
+
+        title = field(type=GraphQLString)
+
+    class Root(RootType):
+        fields = field_set(
+            author=single(lambda: StaticDataObjectType.select(Author)),
+            book=single(lambda: StaticDataObjectType.select(Book)),
+        )
+
+    result = executor(Root)("{ author { name } book { title } }")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+        "book": {"title": "Leave it to Psmith"},
+    }))
