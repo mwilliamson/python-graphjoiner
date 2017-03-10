@@ -18,7 +18,18 @@ class SqlAlchemyObjectType(ObjectType):
 
     @classmethod
     def __select_all__(cls):
-        return Query([]).select_from(cls.__model__)
+        query = Query([]).select_from(cls.__model__)
+        # This is a workaround for a bug in SQLAlchemy:
+        #    https://bitbucket.org/zzzeek/sqlalchemy/issues/3891/single-inh-criteria-should-be-added-for
+        # When using polymorphic models, the filter on the type may not be
+        # generated, so we explicitly include it here.
+
+        polymorphic_identity = cls.__model__.__mapper__.polymorphic_identity
+
+        if polymorphic_identity is None:
+            return query
+        else:
+            return query.filter(cls.__model__.__mapper__.polymorphic_on == polymorphic_identity)
 
     @classmethod
     def __fetch_immediates__(cls, selections, query, context):

@@ -2,7 +2,7 @@ import graphql
 from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries
 import pytest
 import sqlalchemy
-from sqlalchemy import create_engine, Column, ForeignKey, Integer, literal, Unicode
+from sqlalchemy import create_engine, Column, ForeignKey, Integer, literal, String, Unicode
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session
@@ -292,6 +292,59 @@ def test_can_explicitly_set_primary_key():
             {"name": "Joseph Heller"},
         ),
     })))
+
+
+def test_polymorphic_type_is_filtered_by_discriminator_when_there_are_no_polymorphic_fields_selected():
+    Base = declarative_base()
+
+    class PersonRecord(Base):
+        __tablename__ = "person"
+
+        c_id = Column(Integer, primary_key=True)
+        c_discriminator = Column("type", String(50), nullable=False)
+
+        __mapper_args__ = {"polymorphic_on": c_discriminator}
+
+    class AuthorRecord(PersonRecord):
+        __mapper_args__ = {"polymorphic_identity": "author"}
+
+    class ReaderRecord(PersonRecord):
+        __mapper_args__ = {"polymorphic_identity": "reader"}
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+
+        id = column_field(PersonRecord.c_id)
+
+    class Reader(SqlAlchemyObjectType):
+        __model__ = ReaderRecord
+
+        id = column_field(PersonRecord.c_id)
+
+    class Root(RootType):
+        authors = many(lambda: select(Author))
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    session = Session(engine)
+    author = AuthorRecord()
+    session.add(author)
+    session.add(ReaderRecord())
+    session.add(ReaderRecord())
+    session.commit()
+
+    result = executor(Root)("""{
+        authors {
+            id
+        }
+    }""", context=QueryContext(session=session))
+    assert_that(result, is_successful_result(data={
+        "authors": [
+            {"id": author.c_id},
+        ],
+    }))
 
 
 def test_type_of_field_is_determined_from_type_of_column():
