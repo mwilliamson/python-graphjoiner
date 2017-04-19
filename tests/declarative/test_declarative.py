@@ -1,9 +1,9 @@
 import attr
 from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
-from hamcrest import assert_that, equal_to
+from hamcrest import assert_that, contains_inanyorder, equal_to, has_string, starts_with
 
 from graphjoiner.declarative import executor, field, field_set, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType
-from ..matchers import is_successful_result
+from ..matchers import is_invalid_result, is_successful_result
 
 
 class StaticDataObjectType(ObjectType):
@@ -11,11 +11,19 @@ class StaticDataObjectType(ObjectType):
 
     @staticmethod
     @join_builder
-    def select(local, target):
+    def select(local, target, join=None):
+        if join is None:
+            join_fields = {}
+        else:
+            join_fields = dict(
+                (local_field.field_name, remote_field.field_name)
+                for local_field, remote_field in join.items()
+            )
+
         def generate_select(parent_select, context):
             return target.__records__
 
-        return generate_select, {}
+        return generate_select, join_fields
 
     @classmethod
     def __fetch_immediates__(cls, selections, records, context):
@@ -279,6 +287,54 @@ def test_field_type_can_be_declared_using_declarative_type_in_lambda():
             pass
 
     assert_that(Book.__graphql__.fields["author"].type, equal_to(Author.__graphql__))
+
+
+def test_internal_fields_cannot_be_queried_directly():
+    AuthorRecord = attr.make_class("AuthorRecord", ["id", "name"])
+    BookRecord = attr.make_class("BookRecord", ["author_id", "title"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [
+            AuthorRecord("PGW", "PG Wodehouse"),
+            AuthorRecord("JH", "Joseph Heller"),
+        ]
+
+        id = field(type=GraphQLString)
+        name = field(type=GraphQLString)
+
+    class Book(StaticDataObjectType):
+        __records__ = [
+            BookRecord("PGW", "Leave it to Psmith"),
+            BookRecord("PGW", "The Code of the Woosters"),
+        ]
+
+        author_id = field(type=GraphQLString, internal=True)
+        author = single(lambda: StaticDataObjectType.select(
+            Author,
+            join={Book.author_id: Author.id},
+        ))
+        title = field(type=GraphQLString)
+
+    class Root(RootType):
+        books = many(lambda: StaticDataObjectType.select(Book))
+
+    execute = executor(Root)
+    assert_that(
+        execute("{ books { title authorId } }"),
+        is_invalid_result(errors=contains_inanyorder(
+            has_string(starts_with('Cannot query field "authorId"')),
+        )),
+    )
+    # Check that internal fields can still be used for joining
+    assert_that(
+        execute("{ books { title author { name } } }"),
+        is_successful_result(data={
+            "books": [
+                {"title": "Leave it to Psmith", "author": {"name": "PG Wodehouse"}},
+                {"title": "The Code of the Woosters", "author": {"name": "PG Wodehouse"}},
+            ],
+        }),
+    )
 
 
 def test_field_set_can_be_used_to_declare_multiple_fields_in_one_attribute():

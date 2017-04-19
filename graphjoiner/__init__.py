@@ -344,6 +344,7 @@ class JoinType(Value):
                 fields=lambda: dict(
                     (name, field.to_graphql_field())
                     for name, field in six.iteritems(self.fields())
+                    if not getattr(field, "internal", False)
                 ),
                 interfaces=self._interfaces,
             )
