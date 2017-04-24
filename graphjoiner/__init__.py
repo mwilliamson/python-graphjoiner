@@ -24,7 +24,6 @@ def execute(root, *args, **kwargs):
 
 def _execute(schema, root, query, context=None, variables=None):
     try:
-        schema = GraphQLSchema(query=root.to_graphql_type())
         ast = parse(query)
         validation_errors = validate(schema, ast)
         if validation_errors:
