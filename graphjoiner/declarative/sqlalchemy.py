@@ -12,6 +12,10 @@ from . import field, ObjectType, join_builder
 class SqlAlchemyObjectType(ObjectType):
     __abstract__ = True
 
+    @staticmethod
+    def __get_session__(context):
+        return context.session
+
     @classmethod
     def __primary_key__(cls):
         return cls.__model__.__mapper__.primary_key
@@ -40,7 +44,7 @@ class SqlAlchemyObjectType(ObjectType):
         for primary_key_column in cls.__primary_key__():
             query = query.add_columns(primary_key_column)
 
-        return query.distinct().with_session(context.session).all()
+        return query.distinct().with_session(cls.__get_session__(context)).all()
 
 
 def column_field(column, type=None):
@@ -59,7 +63,7 @@ def sql_value_join(local, target, join):
                 local_field.column.label(remote_field.attr_name)
                 for local_field, remote_field in six.iteritems(join)
             )) \
-            .with_session(context.session) \
+            .with_session(local.__get_session__(context)) \
             .all()
 
     join_fields = dict(
