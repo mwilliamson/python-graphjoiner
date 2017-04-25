@@ -362,3 +362,29 @@ def test_field_set_can_be_used_to_declare_multiple_fields_in_one_attribute():
         "author": {"name": "PG Wodehouse"},
         "book": {"title": "Leave it to Psmith"},
     }))
+
+
+def test_arg_method_can_be_used_as_decorator_to_refine_query():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [
+            AuthorRecord("PG Wodehouse"),
+            AuthorRecord("Joseph Heller"),
+        ]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+        @author.arg("nameStartsWith", GraphQLString)
+        def author_arg_starts_with(records, prefix):
+            return list(filter(
+                lambda record: record.name.startswith(prefix),
+                records,
+            ))
+
+    result = executor(Root)("""{ author(nameStartsWith: "P") { name } }""")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))
