@@ -2,7 +2,7 @@ import attr
 from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
 from hamcrest import assert_that, contains_inanyorder, equal_to, has_string, starts_with
 
-from graphjoiner.declarative import executor, field, field_set, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType
+from graphjoiner.declarative import executor, field, field_set, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType, select
 from ..matchers import is_invalid_result, is_successful_result
 
 
@@ -383,6 +383,59 @@ def test_arg_method_can_be_used_as_decorator_to_refine_query():
                 lambda record: record.name.startswith(prefix),
                 records,
             ))
+
+    result = executor(Root)("""{ author(nameStartsWith: "P") { name } }""")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))
+
+
+def test_can_define_args_directly_on_field():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class DictQuery(object):
+        @staticmethod
+        def __select_all__():
+            return {}
+
+        @staticmethod
+        def __add_arg__(args, arg_name, arg_value):
+            args[arg_name] = arg_value
+            return args
+
+    class Author(ObjectType, DictQuery):
+        __records__ = [
+            AuthorRecord("PG Wodehouse"),
+            AuthorRecord("Joseph Heller"),
+        ]
+
+        name = field(type=GraphQLString)
+
+        @classmethod
+        def __fetch_immediates__(cls, selections, query, context):
+            records = cls.__records__
+            if "nameStartsWith" in query:
+                prefix = query["nameStartsWith"]
+                records = list(filter(
+                    lambda record: record.name.startswith(prefix),
+                    records,
+                ))
+
+            return [
+                tuple(
+                    getattr(record, selection.field.attr_name)
+                    for selection in selections
+                )
+                for record in records
+            ]
+
+    class Root(RootType):
+        author = single(
+            lambda: select(Author),
+            args={
+                "nameStartsWith": GraphQLString,
+            },
+        )
 
     result = executor(Root)("""{ author(nameStartsWith: "P") { name } }""")
     assert_that(result, is_successful_result(data={

@@ -151,8 +151,11 @@ def join_builder(build_join):
     return wrapped
 
 
-def relationship(select_values, relationship_type):
-    return LazyFieldDefinition(lambda: select_values()(relationship_type))
+def relationship(select_values, relationship_type, args=None):
+    return LazyFieldDefinition(
+        lambda: select_values()(relationship_type),
+        args=args,
+    )
 
 first_or_none = partial(relationship, relationship_type=graphjoiner.first_or_none)
 single = partial(relationship, relationship_type=graphjoiner.single)
@@ -195,6 +198,13 @@ class RelationshipDefinition(FieldDefinition):
 
         return add_arg
 
+    def add_arg(self, arg_name, arg_type):
+        self._args.append((
+            arg_name,
+            arg_type,
+            lambda args, arg_value: self._target.__add_arg__(args, arg_name, arg_value),
+        ))
+
 
 def extract(relationship, field_name):
     return ExtractFieldDefinition(relationship, field_name)
@@ -213,10 +223,16 @@ class ExtractFieldDefinition(FieldDefinition):
 
 
 class LazyFieldDefinition(FieldDefinition):
-    def __init__(self, func):
+    def __init__(self, func, args):
+        if args is None:
+            args = {}
+
         self._func = func
         self._value = None
-        self._setup = []
+        self._setup = [
+            lambda field: field.add_arg(arg_name, arg_type)
+            for arg_name, arg_type in six.iteritems(args)
+        ]
 
     def instantiate(self):
         field_definition = self._func()
