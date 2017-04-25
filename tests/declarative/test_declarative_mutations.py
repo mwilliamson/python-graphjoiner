@@ -2,7 +2,7 @@ import attr
 from graphql import GraphQLInt, GraphQLNonNull
 from hamcrest import assert_that
 
-from graphjoiner.declarative import executor, field, single, RootType, select, ObjectType
+from graphjoiner.declarative import executor, field, single, RootType, select, ObjectType, Mutation, mutation_field
 from ..matchers import is_successful_result
 
 
@@ -29,32 +29,24 @@ def test_mutations_are_executed_serially():
 
     box = BoxRecord(0)
 
-    class DictQuery(object):
-        @staticmethod
-        def __select_all__():
-            return {}
-
-        @staticmethod
-        def __add_arg__(args, arg_name, arg_value):
-            args[arg_name] = arg_value
-            return args
-
-    class Box(StaticDataObjectType):
-        __records__ = [box]
-
+    class BoxFields(object):
         value = field(type=GraphQLInt)
 
-    class BoxMutation(DictQuery, Box):
+    class Box(StaticDataObjectType, BoxFields):
+        __records__ = [box]
+
+    class BoxMutation(Mutation, ObjectType, BoxFields):
+        __args__ = {
+            "value": GraphQLNonNull(GraphQLInt),
+        }
+
         @classmethod
-        def __fetch_immediates__(cls, selections, query, context):
+        def __mutate__(cls, selections, query, context):
             box.value = query["value"]
             return Box.__fetch_immediates__(selections, [box], context)
 
     class MutationRoot(RootType):
-        update_box = single(
-            lambda: select(BoxMutation),
-            args={"value": GraphQLNonNull(GraphQLInt)}
-        )
+        update_box = mutation_field(lambda: BoxMutation)
 
     class Root(RootType):
         box = single(lambda: select(Box))

@@ -323,3 +323,25 @@ def field_set(**fields):
 class FieldSet(object):
     def __init__(self, fields):
         self._fields = fields
+
+
+class DictQuery(object):
+    @staticmethod
+    def __select_all__():
+        return {}
+
+    @staticmethod
+    def __add_arg__(args, arg_name, arg_value):
+        args = args.copy()
+        args[arg_name] = arg_value
+        return args
+
+
+class Mutation(DictQuery):
+    @classmethod
+    def __fetch_immediates__(cls, *args, **kwargs):
+        return cls.__mutate__(*args, **kwargs)
+
+
+def mutation_field(target):
+    return single(lambda: select(target()), args=target().__args__)
