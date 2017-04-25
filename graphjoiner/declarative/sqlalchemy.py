@@ -44,7 +44,10 @@ class SqlAlchemyObjectType(ObjectType):
         for primary_key_column in cls.__primary_key__():
             query = query.add_columns(primary_key_column)
 
-        return query.distinct().with_session(cls.__get_session__(context)).all()
+        if not query._distinct:
+            query = query.distinct()
+
+        return query.with_session(cls.__get_session__(context)).all()
 
 
 def column_field(column, type=None):

@@ -347,6 +347,54 @@ def test_polymorphic_type_is_filtered_by_discriminator_when_there_are_no_polymor
     }))
 
 
+def test_distinct_on_is_preserved_when_fetching_immediates():
+    # TODO: set up PostgreSQL tests to get this working
+    return
+    Base = declarative_base()
+
+    class LabelRecord(Base):
+        __tablename__ = "author"
+
+        c_id = Column(Integer, primary_key=True)
+        c_label = Column(Unicode, nullable=False)
+
+    class Label(SqlAlchemyObjectType):
+        __model__ = LabelRecord
+
+        @classmethod
+        def __select_all__(cls):
+            return super(Label, cls).__select_all__() \
+                .distinct(LabelRecord.c_label) \
+                .order_by(LabelRecord.c_label, LabelRecord.c_id.desc())
+
+        id = column_field(LabelRecord.c_id)
+        label = column_field(LabelRecord.c_label)
+
+    class Root(RootType):
+        labels = many(lambda: select(Label))
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    session = Session(engine)
+    session.add(LabelRecord(c_id=1, c_label="First"))
+    session.add(LabelRecord(c_id=2, c_label="Second"))
+    session.commit()
+
+    result = executor(Root)("""{
+        labels {
+            id
+            label
+        }
+    }""", context=QueryContext(session=session))
+    assert_that(result, is_successful_result(data={
+        "labels": [
+            {"id": 2, "label": "Second"},
+        ],
+    }))
+
+
 def test_type_of_field_is_determined_from_type_of_column():
     Base = declarative_base()
 
