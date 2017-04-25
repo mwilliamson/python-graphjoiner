@@ -13,16 +13,24 @@ from .requests import request_from_graphql_ast, request_from_graphql_document, R
 from .util import partition, unique
 
 
-def executor(root):
-    schema = GraphQLSchema(query=root.to_graphql_type())
-    return partial(_execute, schema, root)
+def executor(root, mutation=None):
+    if mutation is None:
+        mutation_type = None
+    else:
+        mutation_type = mutation.to_graphql_type()
+
+    schema = GraphQLSchema(
+        query=root.to_graphql_type(),
+        mutation=mutation_type,
+    )
+    return partial(_execute, schema, root, mutation=mutation)
 
 
 def execute(root, *args, **kwargs):
     return executor(root)(*args, **kwargs)
 
 
-def _execute(schema, root, query, context=None, variables=None):
+def _execute(schema, root, query, context=None, variables=None, mutation=None):
     try:
         ast = parse(query)
         validation_errors = validate(schema, ast)
@@ -32,7 +40,7 @@ def _execute(schema, root, query, context=None, variables=None):
                 invalid=True,
             )
 
-        request = request_from_graphql_document(ast, root, context=context, variables=variables)
+        request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variables)
         data = root.fetch(request.query, None)[0].value
 
         if request.schema_query is not None:

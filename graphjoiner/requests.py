@@ -26,26 +26,31 @@ class Request(object):
     context = attrib(default=None)
 
 
-def request_from_graphql_document(document, root, context, variables):
+def request_from_graphql_document(document, query_root, mutation_root, context, variables):
     fragments = dict(
         (definition.name.value, definition)
         for definition in document.definitions
         if isinstance(definition, ast_types.FragmentDefinition)
     )
-    definition_index, query = single(list(filter(
+    definition_index, operation = single(list(filter(
         lambda pair: isinstance(pair[1], ast_types.OperationDefinition),
         enumerate(document.definitions)
     )))
 
+    if operation.operation == "mutation":
+        root = mutation_root
+    else:
+        root = query_root
+
     schema_selection = find(
         lambda selection: selection.name.value == "__schema",
-        query.selection_set.selections,
+        operation.selection_set.selections,
     )
 
     if schema_selection is None:
         schema_query = None
     else:
-        schema_query_definition = copy(query)
+        schema_query_definition = copy(operation)
         schema_query_definition.selection_set = copy(schema_query_definition.selection_set)
         schema_query_definition.selection_set.selections = [schema_selection]
 
@@ -54,7 +59,7 @@ def request_from_graphql_document(document, root, context, variables):
         schema_query.definitions[definition_index] = schema_query_definition
 
     return DocumentRequest(
-        query=request_from_graphql_ast(query, root, context=context, variables=variables, fragments=fragments, field=None),
+        query=request_from_graphql_ast(operation, root, context=context, variables=variables, fragments=fragments, field=None),
         schema_query=schema_query,
     )
 

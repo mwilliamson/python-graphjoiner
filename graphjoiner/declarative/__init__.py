@@ -1,5 +1,6 @@
 import collections
 from functools import partial
+import inspect
 import re
 import types
 
@@ -9,9 +10,14 @@ import six
 import graphjoiner
 
 
-def executor(root):
+def executor(root, mutation=None):
     root_type = root.__graphjoiner__
-    return graphjoiner.executor(root_type)
+    if mutation is None:
+        mutation_type = None
+    else:
+        mutation_type = mutation.__graphjoiner__
+
+    return graphjoiner.executor(root_type, mutation=mutation_type)
 
 
 class Type(object):
@@ -46,9 +52,13 @@ def _declare_fields(cls):
         else:
             return ()
 
+    dicts = {}
+    for base in reversed(inspect.getmro(cls)):
+        dicts.update(base.__dict__)
+
     field_definitions = [
         (field_key, field_definition)
-        for key, value in six.iteritems(cls.__dict__)
+        for key, value in six.iteritems(dicts)
         for field_key, field_definition in get_field_definitions(key, value)
     ]
 

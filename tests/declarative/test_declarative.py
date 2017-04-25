@@ -441,3 +441,21 @@ def test_can_define_args_directly_on_field():
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
+
+
+def test_fields_can_be_defined_on_superclass():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Named(object):
+        name = field(type=GraphQLString)
+
+    class Author(Named, StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse")]
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("{ author { name } }")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))
