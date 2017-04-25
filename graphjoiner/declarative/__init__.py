@@ -239,8 +239,12 @@ class LazyFieldDefinition(FieldDefinition):
 
         self._func = func
         self._value = None
+
+        def arg_setup(arg_name, arg_type):
+            return lambda field: field.add_arg(arg_name, arg_type)
+
         self._setup = [
-            lambda field: field.add_arg(arg_name, arg_type)
+            arg_setup(arg_name, arg_type)
             for arg_name, arg_type in six.iteritems(args)
         ]
 
