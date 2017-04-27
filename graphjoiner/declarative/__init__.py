@@ -43,24 +43,29 @@ class ObjectTypeMeta(type):
         return cls
 
 
-def _declare_fields(cls):
-    def get_field_definitions(key, value):
-        if isinstance(value, FieldDefinition):
-            return ((key, value),)
-        elif isinstance(value, FieldSet):
-            return six.iteritems(value._fields)
-        else:
-            return ()
-
+def get_field_definitions(cls):
     dicts = {}
     for base in reversed(inspect.getmro(cls)):
         dicts.update(base.__dict__)
 
-    field_definitions = [
+    return [
         (field_key, field_definition)
         for key, value in six.iteritems(dicts)
-        for field_key, field_definition in get_field_definitions(key, value)
+        for field_key, field_definition in _attr_to_field_definitions(key, value)
     ]
+
+
+def _attr_to_field_definitions(key, value):
+    if isinstance(value, FieldDefinition):
+        return ((key, value),)
+    elif isinstance(value, FieldSet):
+        return six.iteritems(value._fields)
+    else:
+        return ()
+
+
+def _declare_fields(cls):
+    field_definitions = get_field_definitions(cls)
 
     def fields():
         return dict(
