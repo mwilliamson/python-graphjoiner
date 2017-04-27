@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy.orm import Query
 
 from graphjoiner import declarative
-from . import field, ObjectType, join_builder
+from . import field, get_field_definitions, ObjectType, join_builder
 
 
 class SqlAlchemyObjectType(ObjectType):
@@ -140,7 +140,7 @@ def _find_field_for_column(cls, column):
     raise Exception("Could not find field in {} for {}".format(cls.__name__, column))
 
 def _get_simple_field_definitions(cls):
-    for field_definition in six.itervalues(cls.__dict__):
+    for field_key, field_definition in get_field_definitions(cls):
         if isinstance(field_definition, declarative.SimpleFieldDefinition):
             yield field_definition
 
