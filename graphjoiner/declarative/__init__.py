@@ -196,7 +196,7 @@ class RelationshipDefinition(FieldDefinition):
 
             for arg_name, _, refine_query in self._args:
                 if arg_name in args:
-                    query = refine_query(query, args[arg_name])
+                    query = refine_query(query, args[arg_name], context=context)
 
             return query
 
@@ -209,16 +209,26 @@ class RelationshipDefinition(FieldDefinition):
 
     def arg(self, arg_name, arg_type):
         def add_arg(refine_query):
-            self._args.append((arg_name, arg_type, refine_query))
+            self._add_arg(arg_name, arg_type, refine_query)
 
         return add_arg
 
     def add_arg(self, arg_name, arg_type):
-        self._args.append((
+        self._add_arg(
             arg_name,
             arg_type,
             lambda args, arg_value: self._target.__add_arg__(args, arg_name, arg_value),
-        ))
+        )
+
+    def _add_arg(self, arg_name, arg_type, refine_query):
+        func_args, _, _, _ = inspect.getargspec(refine_query)
+        extra_func_args = func_args[2:]
+        if "context" not in extra_func_args:
+            original_refine_query = refine_query
+            def refine_query(query, arg_value, context):
+                return original_refine_query(query, arg_value)
+
+        self._args.append((arg_name, arg_type, refine_query))
 
 
 def extract(relationship, field_name):

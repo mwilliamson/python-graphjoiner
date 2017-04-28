@@ -1,5 +1,5 @@
 import attr
-from graphql import GraphQLField, GraphQLInterfaceType, GraphQLString
+from graphql import GraphQLBoolean, GraphQLField, GraphQLInterfaceType, GraphQLString
 from hamcrest import assert_that, contains_inanyorder, equal_to, has_string, starts_with
 
 from graphjoiner.declarative import executor, field, field_set, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType, select
@@ -385,6 +385,35 @@ def test_arg_method_can_be_used_as_decorator_to_refine_query():
             ))
 
     result = executor(Root)("""{ author(nameStartsWith: "P") { name } }""")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))
+
+
+def test_arg_refiner_can_take_context():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [
+            AuthorRecord("PG Wodehouse"),
+            AuthorRecord("Joseph Heller"),
+        ]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+        @author.arg("nameStartsWith", GraphQLBoolean)
+        def author_arg_starts_with(records, _, context):
+            return list(filter(
+                lambda record: record.name.startswith(context),
+                records,
+            ))
+
+    result = executor(Root)(
+        """{ author(nameStartsWith: true) { name } }""",
+        context="P",
+    )
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
