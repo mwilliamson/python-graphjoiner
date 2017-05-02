@@ -125,12 +125,14 @@ def _find_join_candidates_directional(local, remote):
     for field_definition in _get_simple_field_definitions(local):
         orm_column = field_definition._kwargs["column"]
         if hasattr(orm_column, "property"):
-            column, = orm_column.property.columns
-            for foreign_key in column.foreign_keys:
-                if remote.__model__.__table__ == foreign_key.column.table:
-                    remote_primary_key_column, = foreign_key.column.table.primary_key
-                    remote_field = _find_field_for_column(remote, remote_primary_key_column)
-                    yield field_definition, remote_field
+            columns = orm_column.property.columns
+            if len(columns) == 1:
+                column, = columns
+                for foreign_key in column.foreign_keys:
+                    if remote.__model__.__table__ == foreign_key.column.table:
+                        remote_primary_key_column, = foreign_key.column.table.primary_key
+                        remote_field = _find_field_for_column(remote, remote_primary_key_column)
+                        yield field_definition, remote_field
 
 
 def _find_field_for_column(cls, column):
