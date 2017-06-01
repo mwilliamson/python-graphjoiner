@@ -113,7 +113,7 @@ def _find_foreign_key(local, target):
         foreign_key, = foreign_keys
         return foreign_key
     else:
-        raise Exception("TODO")
+        raise Exception("Could not find unique foreign key from {} to {}".format(local.__name__, target.__name__))
 
 def _find_join_candidates(local, target):
     for local_field, target_field in _find_join_candidates_directional(local, target):

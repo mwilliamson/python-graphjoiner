@@ -509,6 +509,7 @@ class TestSnakeCaseToCamelCase(object):
     @pytest.mark.parametrize("snake_case, camel_case", [
         ("one", "one"),
         ("one_two", "oneTwo"),
+        ("one_", "one"),
     ])
     def test_string_without_underscores_is_unchanged(self, snake_case, camel_case):
         assert_that(_snake_case_to_camel_case(snake_case), equal_to(camel_case))
