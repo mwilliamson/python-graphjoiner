@@ -231,8 +231,11 @@ class RelationshipDefinition(FieldDefinition):
         self._args.append((arg_name, arg_type, refine_query))
 
 
-def extract(relationship, field_name):
-    return ExtractFieldDefinition(relationship, field_name)
+def extract(relationship, field):
+    if isinstance(field, six.string_types):
+        return ExtractFieldDefinition(relationship, field)
+    else:
+        return LazyFieldDefinition(lambda: ExtractFieldDefinition(relationship, field().field_name))
 
 
 class ExtractFieldDefinition(FieldDefinition):
@@ -248,7 +251,7 @@ class ExtractFieldDefinition(FieldDefinition):
 
 
 class LazyFieldDefinition(FieldDefinition):
-    def __init__(self, func, args):
+    def __init__(self, func, args=None):
         if args is None:
             args = {}
 

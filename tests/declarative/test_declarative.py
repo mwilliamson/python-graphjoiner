@@ -183,6 +183,24 @@ def test_can_extract_fields_from_anonymous_fields():
     }))
 
 
+def test_can_extract_fields_from_relationships_using_field():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        authors = many(lambda: StaticDataObjectType.select(Author))
+        author_names = extract(authors, lambda: Author.name)
+
+    result = executor(Root)("{ authorNames }")
+    assert_that(result, is_successful_result(data={
+        "authorNames": ["PG Wodehouse", "Joseph Heller"],
+    }))
+
+
 def test_can_implement_graphql_core_interfaces():
     HasName = GraphQLInterfaceType("HasName", fields={
         "name": GraphQLField(GraphQLString),
