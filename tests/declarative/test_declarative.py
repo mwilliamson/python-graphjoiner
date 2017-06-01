@@ -1,8 +1,23 @@
 import attr
 from graphql import GraphQLBoolean, GraphQLField, GraphQLInterfaceType, GraphQLString
 from hamcrest import assert_that, contains_inanyorder, equal_to, has_string, starts_with
+import pytest
 
-from graphjoiner.declarative import executor, field, field_set, first_or_none, single, many, RootType, ObjectType, extract, join_builder, InterfaceType, select
+from graphjoiner.declarative import (
+    executor,
+    extract,
+    field,
+    field_set,
+    first_or_none,
+    single,
+    many,
+    RootType,
+    ObjectType,
+    join_builder,
+    InterfaceType,
+    select,
+    _snake_case_to_camel_case,
+)
 from ..matchers import is_invalid_result, is_successful_result
 
 
@@ -488,3 +503,12 @@ def test_fields_can_be_defined_on_superclass():
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
+
+
+class TestSnakeCaseToCamelCase(object):
+    @pytest.mark.parametrize("snake_case, camel_case", [
+        ("one", "one"),
+        ("one_two", "oneTwo"),
+    ])
+    def test_string_without_underscores_is_unchanged(self, snake_case, camel_case):
+        assert_that(_snake_case_to_camel_case(snake_case), equal_to(camel_case))
