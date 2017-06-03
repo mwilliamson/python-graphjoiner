@@ -213,43 +213,6 @@ def test_can_explicitly_set_join_query_between_sqlalchemy_objects():
     }))
 
 
-def test_hybrid_properties_are_ignored_when_scanning_for_foreign_keys():
-    Base = declarative_base()
-
-    class AuthorRecord(Base):
-        __tablename__ = "author"
-
-        c_id = Column(Integer, primary_key=True)
-
-    class BookRecord(Base):
-        __tablename__ = "book"
-
-        c_id = Column(Integer, primary_key=True)
-
-        @hybrid_property
-        def c_title(self):
-            return literal("<title>")
-
-        c_author_id = Column(Integer, ForeignKey(AuthorRecord.c_id))
-
-    class Author(SqlAlchemyObjectType):
-        __model__ = AuthorRecord
-
-        id = column_field(AuthorRecord.c_id)
-
-    class Book(SqlAlchemyObjectType):
-        __model__ = BookRecord
-
-        id = column_field(BookRecord.c_id)
-        title = column_field(BookRecord.c_title)
-        author_id = column_field(BookRecord.c_author_id)
-
-    assert_that(
-        list(_find_join_candidates(Author, Book)),
-        equal_to([(Author.__dict__["id"], Book.__dict__["author_id"])]),
-    )
-
-
 def test_can_explicitly_set_primary_key():
     Base = declarative_base()
 
@@ -437,3 +400,73 @@ def test_type_mappings(sql_type, graphql_type):
 class QueryContext(object):
     def __init__(self, session):
         self.session = session
+
+
+class TestFindJoinCandidates(object):
+    def test_can_find_foreign_key_from_local_to_target_primary_key(self):
+        Base = declarative_base()
+
+        class AuthorRecord(Base):
+            __tablename__ = "author"
+            
+            c_id = Column(Integer, primary_key=True)
+
+        class BookRecord(Base):
+            __tablename__ = "book"
+
+            c_id = Column(Integer, primary_key=True)
+            c_author_id = Column(Integer, ForeignKey(AuthorRecord.c_id))
+
+        class Author(SqlAlchemyObjectType):
+            __model__ = AuthorRecord
+
+            id = column_field(AuthorRecord.c_id)
+
+        class Book(SqlAlchemyObjectType):
+            __model__ = BookRecord
+
+            id = column_field(BookRecord.c_id)
+            author_id = column_field(BookRecord.c_author_id)
+        
+        candidates = list(_find_join_candidates(Book, Author))
+        
+        assert_that(candidates, equal_to([
+            (Book.__dict__["author_id"], Author.__dict__["id"]),
+        ]))
+
+
+    def test_hybrid_properties_are_ignored_when_scanning_for_foreign_keys(self):
+        Base = declarative_base()
+
+        class AuthorRecord(Base):
+            __tablename__ = "author"
+
+            c_id = Column(Integer, primary_key=True)
+
+        class BookRecord(Base):
+            __tablename__ = "book"
+
+            c_id = Column(Integer, primary_key=True)
+
+            @hybrid_property
+            def c_title(self):
+                return literal("<title>")
+
+            c_author_id = Column(Integer, ForeignKey(AuthorRecord.c_id))
+
+        class Author(SqlAlchemyObjectType):
+            __model__ = AuthorRecord
+
+            id = column_field(AuthorRecord.c_id)
+
+        class Book(SqlAlchemyObjectType):
+            __model__ = BookRecord
+
+            id = column_field(BookRecord.c_id)
+            title = column_field(BookRecord.c_title)
+            author_id = column_field(BookRecord.c_author_id)
+
+        assert_that(
+            list(_find_join_candidates(Author, Book)),
+            equal_to([(Author.__dict__["id"], Book.__dict__["author_id"])]),
+        )
