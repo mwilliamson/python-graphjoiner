@@ -130,8 +130,7 @@ def _find_join_candidates_directional(local, remote):
                 column, = columns
                 for foreign_key in column.foreign_keys:
                     if remote.__model__.__table__ == foreign_key.column.table:
-                        remote_primary_key_column, = foreign_key.column.table.primary_key
-                        remote_field = _find_field_for_column(remote, remote_primary_key_column)
+                        remote_field = _find_field_for_column(remote, foreign_key.column)
                         yield field_definition, remote_field
 
 

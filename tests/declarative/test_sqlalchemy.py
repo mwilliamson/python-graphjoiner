@@ -433,6 +433,40 @@ class TestFindJoinCandidates(object):
         assert_that(candidates, equal_to([
             (Book.__dict__["author_id"], Author.__dict__["id"]),
         ]))
+        
+        
+    def test_can_find_foreign_key_from_local_to_target_column_that_isnt_primary_key(self):
+        Base = declarative_base()
+
+        class AuthorRecord(Base):
+            __tablename__ = "author"
+            
+            c_id = Column(Integer, primary_key=True)
+            c_code = Column(Integer)
+
+        class BookRecord(Base):
+            __tablename__ = "book"
+
+            c_id = Column(Integer, primary_key=True)
+            c_author_code = Column(Integer, ForeignKey(AuthorRecord.c_code))
+
+        class Author(SqlAlchemyObjectType):
+            __model__ = AuthorRecord
+
+            id = column_field(AuthorRecord.c_id)
+            code = column_field(AuthorRecord.c_code)
+
+        class Book(SqlAlchemyObjectType):
+            __model__ = BookRecord
+
+            id = column_field(BookRecord.c_id)
+            author_code = column_field(BookRecord.c_author_code)
+        
+        candidates = list(_find_join_candidates(Book, Author))
+        
+        assert_that(candidates, equal_to([
+            (Book.__dict__["author_code"], Author.__dict__["code"]),
+        ]))
 
 
     def test_hybrid_properties_are_ignored_when_scanning_for_foreign_keys(self):
