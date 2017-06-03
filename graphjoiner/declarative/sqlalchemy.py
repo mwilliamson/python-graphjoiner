@@ -122,6 +122,8 @@ def _find_join_candidates(local, target):
         yield local_field, target_field
 
 def _find_join_candidates_directional(local, remote):
+    remote_tables = sqlalchemy.inspect(remote.__model__).tables
+    
     for field_definition in _get_simple_field_definitions(local):
         orm_column = field_definition._kwargs["column"]
         if hasattr(orm_column, "property"):
@@ -129,7 +131,7 @@ def _find_join_candidates_directional(local, remote):
             if len(columns) == 1:
                 column, = columns
                 for foreign_key in column.foreign_keys:
-                    if remote.__model__.__table__ == foreign_key.column.table:
+                    if foreign_key.column.table in remote_tables:
                         remote_field = _find_field_for_column(remote, foreign_key.column)
                         yield field_definition, remote_field
 
