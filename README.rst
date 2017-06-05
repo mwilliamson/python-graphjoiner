@@ -252,6 +252,20 @@ and the joiner is ``select(Book)``.
 Calling ``select()`` with just the target type tells GraphJoiner to select all values,
 in this case all books.
 
+All joiners accept a ``filter`` argument that allow the remote query to be tweaked.
+For instance,
+supposing books are selected using SQLAlchemy queries,
+and we want the ``books`` field to be sorted by title:
+
+.. code-block:: python
+
+    class Root(RootType):
+        ...
+        books = many(lambda: select(
+            Book,
+            filter=lambda query: query.order_by(BookRecord.title),
+        ))
+
 ``select(target, join_query=None, join_fields=None)``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
