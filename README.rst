@@ -239,6 +239,8 @@ For instance, to select all books from the root type:
 
 .. code-block:: python
 
+    from graphjoiner.declarative import many, RootType, select
+
     class Root(RootType):
         ...
         books = many(lambda: select(Book))
@@ -257,6 +259,8 @@ supposing books are selected using SQLAlchemy queries,
 and we want the ``books`` field to be sorted by title:
 
 .. code-block:: python
+
+    from graphjoiner.declarative import many, RootType, select
 
     class Root(RootType):
         ...
@@ -283,6 +287,9 @@ and each book has an author ID:
 
 .. code-block:: python
 
+    from graphjoiner.declarative import field, ObjectType, select, single
+    from graphql import GraphQLInt
+
     class Book(ObjectType):
         ...
         author_id = field(type=GraphQLInt)
@@ -300,6 +307,9 @@ we'd like to fetch the authors for just the requested book,
 rather than all available authors:
 
 .. code-block:: python
+
+    from graphjoiner.declarative import select, single
+    from graphjoiner.declarative.sqlalchemy import column_field, SqlAlchemyObjectType
 
     class Book(SqlAlchemyObjectType):
         ...
@@ -325,6 +335,9 @@ In this particular case, using ``sql_join()`` would remove much of the boilerpla
 
 .. code-block:: python
 
+    from graphjoiner.declarative import single
+    from graphjoiner.declarative.sqlalchemy import column_field, sql_join, SqlAlchemyObjectType
+
     class Book(SqlAlchemyObjectType):
         ...
         author_id = column_field(BookRecord.author_id)
@@ -342,6 +355,8 @@ and we want to add a ``bookTitles`` field to the root type:
 
 .. code-block:: python
 
+    from graphjoiner.declarative import extract, many, RootType, select
+
     class Root(RootType):
         books = many(lambda: select(Book))
         book_titles = extract(books, lambda: Book.title)
@@ -350,6 +365,8 @@ If we want to just have the ``bookTitles`` field without a ``books`` field,
 we can pass the relationship directly into ``extract()``:
 
 .. code-block:: python
+
+    from graphjoiner.declarative import extract, many, RootType, select
 
     class Root(RootType):
         book_titles = extract(
@@ -365,6 +382,8 @@ We define a type that associates books and publishers:
 
 .. code-block:: python
 
+    from graphjoiner.declarative import ObjectType, select, single
+
     class BookPublisherAssociation(ObjectType):
         book = single(lambda: select(Book, ...))
         publisher = single(lambda: select(Publisher, ...))
@@ -373,6 +392,8 @@ We can then use ``extract`` to define a field for all publishers of a book,
 and a field for books from a publisher:
 
 .. code-block:: python
+
+    from graphjoiner.declarative import extract, many, ObjectType, select
 
     class Book(ObjectType):
         ...
@@ -407,6 +428,8 @@ set the ``__interfaces__`` attribute:
 
 .. code-block:: python
 
+    from graphjoiner.declarative import ObjectType
+
     class Author(ObjectType):
         __interfaces__ = lambda: [HasName]
         ...
@@ -419,7 +442,7 @@ For instance, this definition without field sets:
 
 .. code-block:: python
 
-    from graphjoiner.declarative import ObjectType
+    from graphjoiner.declarative import field, ObjectType
 
     class Book(ObjectType):
         title = field(type=GraphQLString)
@@ -429,7 +452,7 @@ is roughly equivalent to this definition using field sets:
 
 .. code-block:: python
 
-    from graphjoiner.declarative import field_set, ObjectType
+    from graphjoiner.declarative import field, field_set, ObjectType
 
     class Book(ObjectType):
         fields = field_set(
