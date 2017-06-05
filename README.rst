@@ -398,6 +398,34 @@ set the ``__interfaces__`` attribute:
         __interfaces__ = lambda: [HasName]
         ...
 
+Field sets
+^^^^^^^^^^
+
+Field sets can be used to define multiple fields using a single attribute.
+For instance, this definition without field sets:
+
+.. code-block:: python
+
+    from graphjoiner.declarative import ObjectType
+
+    class Book(ObjectType):
+        title = field(type=GraphQLString)
+        author_id = field(type=GraphQLInt)
+
+is roughly equivalent to this definition using field sets:
+
+.. code-block:: python
+
+    from graphjoiner.declarative import field_set, ObjectType
+
+    class Book(ObjectType):
+        fields = field_set(
+            title=field(type=GraphQLString),
+            author_id=field(type=GraphQLString),
+        )
+
+Field sets are useful when a set of fields needs to be generated dynamically.
+
 Core Example
 ------------
 
