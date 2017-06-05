@@ -365,14 +365,14 @@ and a field for books from a publisher:
         ...
         publishers = extract(
             many(lambda: select(BookPublisherAssociation, ...)),
-            BookPublisherAssociation.publisher,
+            lambda: BookPublisherAssociation.publisher,
         )
 
     class Publisher(ObjectType):
         ...
         books = extract(
             many(lambda: select(BookPublisherAssociation, ...)),
-            BookPublisherAssociation.book,
+            lambda: BookPublisherAssociation.book,
         )
 
 Core Example
