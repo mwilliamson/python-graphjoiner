@@ -375,6 +375,29 @@ and a field for books from a publisher:
             lambda: BookPublisherAssociation.book,
         )
 
+Interfaces
+^^^^^^^^^^
+
+To define an interface,
+subclass ``InterfaceType`` and specify fields using ``field()``:
+
+.. code-block:: python
+
+    from graphjoiner.declarative import InterfaceType
+    from graphql import GraphQLString
+
+    class HasName(InterfaceType):
+        name = field(type=GraphQLString)
+
+To set which interfaces an object implements,
+set the ``__interfaces__`` attribute:
+
+.. code-block:: python
+
+    class Author(ObjectType):
+        __interfaces__ = lambda: [HasName]
+        ...
+
 Core Example
 ------------
 
