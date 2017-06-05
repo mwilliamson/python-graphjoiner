@@ -161,9 +161,8 @@ When defining object types that represent SQLAlchemy models,
 we can inherit from ``SqlAlchemyObjectType``,
 with the ``__model__`` attribute set to the appropriate model.
 
-Fields that can be fetched without further joining can be defined using ``field()``.
-The arguments that ``field()`` accepts will depend on the object type.
-For SQLAlchemy object types, we pass in the column that the field should correspond to.
+Fields that can be fetched without further joining can be defined using ``column_field()``.
+GraphJoiner will automatically infer the GraphQL type of the field based on the SQL type of the column.
 
 Next is the definition of ``Book``:
 
