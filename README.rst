@@ -344,13 +344,13 @@ we can pass the relationship directly into ``extract()``:
             lambda: Book.title,
         )
 
-``extract()`` often useful when modelling many-to-many relationships.
+``extract()`` is often useful when modelling many-to-many relationships.
 For instance,
 suppose a book may have many publishers,
 and each publisher may publish many books.
 We define a type that associates books and publishers:
 
-.. code-block::python
+.. code-block:: python
 
     class BookPublisherAssociation(ObjectType):
         book = single(lambda: select(Book, ...))
