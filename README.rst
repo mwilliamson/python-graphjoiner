@@ -231,6 +231,69 @@ API
 ``graphjoiner.declarative``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+ObjectType
+^^^^^^^^^^
+
+To create a type that can be joined to,
+subclass ``ObjectType`` and implement the following methods as static or class methods:
+
+* ``__select_all__()``: create a query that selects all of the values of this type.
+  This will be passed into ``__fetch_immediates__()``,
+  possibly after some modification.
+
+* ``__fetch_immediates__(selections, query, context)``:
+  fetch the values for the selected fields that aren't relationships.
+
+  Receives the arguments:
+
+  * ``selections``: an iterable of the selections,
+    where each selection has the attributes:
+
+    * ``field``: the field being selected
+    * ``args``: the arguments for the selection
+    * ``selections``: the sub-selections of that selection
+
+  Should return a list of tuples,
+  where each tuple contains the value for each selection in the same order.
+
+For instance,
+to implement a base type for static data:
+
+.. code-block:: python
+
+    import collections
+
+    from graphjoiner.declarative import ObjectType, RootType, select, single
+    from graphql import GraphQLString
+
+    class StaticDataObjectType(ObjectType):
+        __abstract__ = True
+
+        @classmethod
+        def __select_all__(cls):
+            return cls.__records__
+
+        @classmethod
+        def __fetch_immediates__(cls, selections, records, context):
+            return [
+                tuple(
+                    getattr(record, selection.field.attr_name)
+                    for selection in selections
+                )
+                for record in records
+            ]
+
+    AuthorRecord = collections.namedtuple("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse")]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: select(Author))
+
+
 Relationships
 ^^^^^^^^^^^^^
 
