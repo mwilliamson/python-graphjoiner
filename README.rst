@@ -317,6 +317,64 @@ In this particular case, using ``sql_join()`` would remove much of the boilerpla
         author_id = column_field(BookRecord.author_id)
         author = single(lambda: sql_join(Author, {Book.author_id: Author.id}))
 
+``extract(field, sub_field)``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Create a new by extracting ``sub_field`` from ``field``.
+
+For instance,
+supposing we have a field ``books`` on the root type,
+each book has a ``title`` field,
+and we want to add a ``bookTitles`` field to the root type:
+
+.. code-block:: python
+
+    class Root(RootType):
+        books = many(lambda: select(Book))
+        book_titles = extract(books, lambda: Book.title)
+
+If we want to just have the ``bookTitles`` field without a ``books`` field,
+we can pass the relationship directly into ``extract()``:
+
+.. code-block:: python
+
+    class Root(RootType):
+        book_titles = extract(
+            many(lambda: select(Book)),
+            lambda: Book.title,
+        )
+
+``extract()`` often useful when modelling many-to-many relationships.
+For instance,
+suppose a book may have many publishers,
+and each publisher may publish many books.
+We define a type that associates books and publishers:
+
+.. code-block::python
+
+    class BookPublisherAssociation(ObjectType):
+        book = single(lambda: select(Book, ...))
+        publisher = single(lambda: select(Publisher, ...))
+
+We can then use ``extract`` to define a field for all publishers of a book,
+and a field for books from a publisher:
+
+.. code-block:: python
+
+    class Book(ObjectType):
+        ...
+        publishers = extract(
+            many(lambda: select(BookPublisherAssociation, ...)),
+            BookPublisherAssociation.publisher,
+        )
+
+    class Publisher(ObjectType):
+        ...
+        books = extract(
+            many(lambda: select(BookPublisherAssociation, ...)),
+            BookPublisherAssociation.book,
+        )
+
 Core Example
 ------------
 
