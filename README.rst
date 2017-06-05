@@ -320,7 +320,7 @@ In this particular case, using ``sql_join()`` would remove much of the boilerpla
 ``extract(field, sub_field)``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Create a new by extracting ``sub_field`` from ``field``.
+Create a new field by extracting ``sub_field`` from ``field``.
 
 For instance,
 supposing we have a field ``books`` on the root type,
