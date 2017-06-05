@@ -225,6 +225,98 @@ we can request the books by an author:
         name = column_field(AuthorRecord.name)
         books = many(lambda: sql_join(Book))
 
+
+API
+---
+
+``graphjoiner.declarative``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Relationships
+^^^^^^^^^^^^^
+
+Use ``single``, ``first_or_none`` and ``many`` to create fields that are joined to other types.
+For instance, to select all books from the root type:
+
+.. code-block:: python
+
+    class Root(RootType):
+        ...
+        books = many(lambda: select(Book))
+
+Each relationship function accepts a joiner:
+a value that describes how to join the local type to the remote type.
+The joiner is always wrapped in a lambda to defer evaluation until all types are defined.
+In this case, the local type is ``Root``, the remote type is ``Book``,
+and the joiner is ``select(Book)``.
+Calling ``select()`` with just the target type tells GraphJoiner to select all values,
+in this case all books.
+
+``select(target, join_query=None, join_fields=None)``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Creates a joiner to the target type.
+When given no additional arguments,
+it will select all values of the target type using ``target.__select_all__()``.
+All local values are joined onto all remote values
+i.e. the join is the cartesian product.
+Unless the local type is the root type,
+this probably isn't what you want.
+
+Set ``join_fields`` to describe which fields to use to join together the local and remote types.
+Each item in the dictionary should map a local field to a remote field.
+For instance, supposing each author has a unique ID,
+and each book has an author ID:
+
+.. code-block:: python
+
+    class Book(ObjectType):
+        ...
+        author_id = field(type=GraphQLInt)
+        author = single(lambda: select(
+            Author,
+            join_fields={Book.author_id: Author.id},
+        ))
+
+Set ``join_query`` to describe how to join the local query and the remote query.
+This should be a function that accepts a local query and a remote query,
+and returns a remote query filtered to the values relevant to the local query.
+This avoids the cost of fetching all remote values only to discard those that don't join onto any local values.
+For instance, when using the ``sqlalchemy`` module,
+we'd like to fetch the authors for just the requested book,
+rather than all available authors:
+
+.. code-block:: python
+
+    class Book(SqlAlchemyObjectType):
+        ...
+        author_id = column_field(BookRecord.author_id)
+
+        def join_authors(book_query, author_query):
+            author_ids = book_query \
+                .add_columns(BookRecord.author_id) \
+                .subquery()
+
+            return author_query.join(
+                author_ids,
+                author_ids.c.author_id == AuthorRecord.id,
+            )
+
+        author = single(lambda: select(
+            Author,
+            join_query=join_authors,
+            join_fields={Book.author_id: Author.id},
+        ))
+
+In this particular case, using ``sql_join()`` would remove much of the boilerplate:
+
+.. code-block:: python
+
+    class Book(SqlAlchemyObjectType):
+        ...
+        author_id = column_field(BookRecord.author_id)
+        author = single(lambda: sql_join(Author, {Book.author_id: Author.id}))
+
 Core Example
 ------------
 
