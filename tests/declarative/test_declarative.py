@@ -531,3 +531,14 @@ class TestSnakeCaseToCamelCase(object):
     ])
     def test_string_without_underscores_is_unchanged(self, snake_case, camel_case):
         assert_that(_snake_case_to_camel_case(snake_case), equal_to(camel_case))
+
+
+def test_name_of_object_type_can_be_overridden():
+    class GeneratedType(ObjectType):
+        __name__ = "User"
+
+        email_address = field(type=GraphQLString)
+        __fetch_immediates__ = None
+
+    assert_that(GeneratedType.__name__, equal_to("User"))
+    assert_that(GeneratedType.__graphql__.name, equal_to("User"))

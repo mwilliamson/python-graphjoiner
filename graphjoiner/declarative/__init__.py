@@ -32,6 +32,10 @@ class ObjectTypeMeta(type):
 
         fields = _declare_fields(cls)
 
+        name = attrs.get("__name__")
+        if name is not None:
+            cls.__name__ = name
+
         cls.__graphjoiner__ = graphjoiner.JoinType(
             name=cls.__name__,
             fields=fields,
