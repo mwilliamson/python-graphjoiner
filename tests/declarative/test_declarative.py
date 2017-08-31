@@ -1,6 +1,6 @@
 import attr
 from graphql import GraphQLBoolean, GraphQLField, GraphQLInterfaceType, GraphQLString
-from hamcrest import assert_that, contains_inanyorder, equal_to, has_string, starts_with
+from hamcrest import assert_that, contains_inanyorder, equal_to, has_properties, has_string, starts_with
 import pytest
 
 from graphjoiner.declarative import (
@@ -543,7 +543,7 @@ def test_can_define_input_object_types():
         @author.arg("selection", AuthorSelection)
         def author_arg_selection(records, selection):
             return list(filter(
-                lambda record: record.name.startswith(selection["nameStartsWith"]),
+                lambda record: record.name.startswith(selection.name_starts_with),
                 records,
             ))
 
@@ -551,6 +551,52 @@ def test_can_define_input_object_types():
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
+
+
+class TestInputObjectType(object):
+    def test_field_is_read_from_dict(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        assert_that(
+            AuthorSelection.__read__({"nameStartsWith": "Bob"}),
+            has_properties(name_starts_with="Bob"),
+        )
+
+    def test_missing_fields_have_value_of_none(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        assert_that(
+            AuthorSelection.__read__({}),
+            has_properties(name_starts_with=None),
+        )
+
+    def test_fields_are_recursively_read(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        class BookSelection(InputObjectType):
+            author_selection = field(type=AuthorSelection)
+
+        assert_that(
+            BookSelection.__read__({"authorSelection": {"nameStartsWith": "Bob"}}),
+            has_properties(
+                author_selection=has_properties(name_starts_with="Bob"),
+            ),
+        )
+
+    def test_missing_object_type_fields_have_value_of_none(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        class BookSelection(InputObjectType):
+            author_selection = field(type=AuthorSelection)
+
+        assert_that(
+            BookSelection.__read__({}),
+            has_properties(author_selection=None),
+        )
 
 
 class TestSnakeCaseToCamelCase(object):

@@ -4,10 +4,12 @@ import inspect
 import re
 import types
 
+import attr
 from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType
 import six
 
 import graphjoiner
+from .lazy import lazy
 
 
 def executor(root, mutation=None):
@@ -170,6 +172,15 @@ def join_builder(build_join):
     return wrapped
 
 
+def field_set(**fields):
+    return FieldSet(fields)
+
+
+class FieldSet(object):
+    def __init__(self, fields):
+        self._fields = fields
+
+
 def relationship(select_values, relationship_type, args=None):
     return LazyFieldDefinition(
         lambda: select_values()(relationship_type),
@@ -226,9 +237,17 @@ class RelationshipDefinition(FieldDefinition):
 
     def _add_arg(self, arg_name, arg_type, refine_query):
         if isinstance(arg_type, type) and issubclass(arg_type, InputObjectType):
+            read_arg_value = arg_type.__read__
             arg_type = arg_type.__graphql__
+        else:
+            read_arg_value = lambda x: x
 
-        self._args.append((arg_name, arg_type, _optional_argument("context", refine_query)))
+        refine_query = _optional_argument("context", refine_query)
+
+        def new_refine_query(query, arg_value, *args, **kwargs):
+            return refine_query(query, read_arg_value(arg_value), *args, **kwargs)
+
+        self._args.append((arg_name, arg_type, new_refine_query))
 
 
 def _optional_argument(arg_name, func):
@@ -351,33 +370,45 @@ class InterfaceType(six.with_metaclass(InterfaceTypeMeta, Type)):
 class InputObjectTypeMeta(type):
     def __new__(meta, name, bases, attrs):
         cls = super(InputObjectTypeMeta, meta).__new__(meta, name, bases, attrs)
+        if attrs.get("__abstract__"):
+            return cls
 
-        def fields():
-            fields = _declare_fields(cls)()
-            return dict(
-                (key, field.to_graphql_input_field())
-                for key, field in six.iteritems(fields)
-            )
+        fields = lazy(_declare_fields(cls))
 
         cls.__graphql__ = GraphQLInputObjectType(
             name=cls.__name__,
-            fields=fields,
+            fields=lambda: dict(
+                (key, field.to_graphql_input_field())
+                for key, field in six.iteritems(fields())
+            ),
         )
+
+        ArgumentType = lazy(lambda: attr.make_class(cls.__name__, [
+            field.attr_name
+            for field in fields().values()
+        ]))
+
+        @staticmethod
+        def read_arg_value(value):
+            def get_value(field):
+                field_value = value.get(field.field_name)
+                if field_value is not None and isinstance(field.type, type) and issubclass(field.type, InputObjectType):
+                    return field.type.__read__(field_value)
+                else:
+                    return field_value
+
+            return ArgumentType()(**dict(
+                (field.attr_name, get_value(field))
+                for field in fields().values()
+            ))
+
+        cls.__read__ = read_arg_value
 
         return cls
 
 
 class InputObjectType(six.with_metaclass(InputObjectTypeMeta, object)):
-    pass
-
-
-def field_set(**fields):
-    return FieldSet(fields)
-
-
-class FieldSet(object):
-    def __init__(self, fields):
-        self._fields = fields
+    __abstract__ = True
 
 
 class DictQuery(object):
