@@ -17,6 +17,7 @@ from graphjoiner.declarative import (
     join_builder,
     InterfaceType,
     select,
+    undefined,
     _snake_case_to_camel_case,
 )
 from ..matchers import is_invalid_result, is_successful_result
@@ -563,13 +564,13 @@ class TestInputObjectType(object):
             has_properties(name_starts_with="Bob"),
         )
 
-    def test_missing_fields_have_value_of_none(self):
+    def test_missing_fields_have_value_of_undefined(self):
         class AuthorSelection(InputObjectType):
             name_starts_with = field(type=GraphQLString)
 
         assert_that(
             AuthorSelection.__read__({}),
-            has_properties(name_starts_with=None),
+            has_properties(name_starts_with=undefined),
         )
 
     def test_fields_are_recursively_read(self):
@@ -586,7 +587,7 @@ class TestInputObjectType(object):
             ),
         )
 
-    def test_missing_object_type_fields_have_value_of_none(self):
+    def test_missing_object_type_fields_have_value_of_undefined(self):
         class AuthorSelection(InputObjectType):
             name_starts_with = field(type=GraphQLString)
 
@@ -595,6 +596,18 @@ class TestInputObjectType(object):
 
         assert_that(
             BookSelection.__read__({}),
+            has_properties(author_selection=undefined),
+        )
+
+    def test_object_type_field_of_null_is_read_as_none(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        class BookSelection(InputObjectType):
+            author_selection = field(type=AuthorSelection)
+
+        assert_that(
+            BookSelection.__read__({"authorSelection": None}),
             has_properties(author_selection=None),
         )
 

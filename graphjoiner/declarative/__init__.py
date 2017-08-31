@@ -391,8 +391,8 @@ class InputObjectTypeMeta(type):
         @staticmethod
         def read_arg_value(value):
             def get_value(field):
-                field_value = value.get(field.field_name)
-                if field_value is not None and isinstance(field.type, type) and issubclass(field.type, InputObjectType):
+                field_value = value.get(field.field_name, undefined)
+                if field_value is not None and field_value is not undefined and isinstance(field.type, type) and issubclass(field.type, InputObjectType):
                     return field.type.__read__(field_value)
                 else:
                     return field_value
@@ -431,3 +431,10 @@ class Mutation(DictQuery):
 
 def mutation_field(target):
     return single(lambda: select(target()), args=target().__args__)
+
+
+class _Undefined(object):
+    pass
+
+
+undefined = _Undefined()
