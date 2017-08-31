@@ -612,6 +612,10 @@ class TestInputObjectType(object):
         )
 
 
+def test_undefined_is_falsey():
+    assert_that(bool(undefined), equal_to(False))
+
+
 class TestSnakeCaseToCamelCase(object):
     @pytest.mark.parametrize("snake_case, camel_case", [
         ("one", "one"),

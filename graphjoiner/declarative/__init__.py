@@ -434,7 +434,11 @@ def mutation_field(target):
 
 
 class _Undefined(object):
-    pass
+    def __bool__(self):
+        return False
+
+    def __nonzero__(self):
+        return False
 
 
 undefined = _Undefined()
