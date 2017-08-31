@@ -103,23 +103,24 @@ def _resolve_fetched_field(source, args, context, info):
     return source[field_key(info.field_asts[0])]
 
 
-def relationship(join=None, args=None, **kwargs):
+def relationship(join=None, args=None, internal=False, **kwargs):
     if join is None:
         join = {}
     if args is None:
         args = {}
 
-    return Relationship(join=join, args=args, **kwargs)
+    return Relationship(join=join, args=args, internal=internal, **kwargs)
 
 
 class Relationship(FieldBase):
-    def __init__(self, target, process_results, wrap_type, build_query, join, args):
+    def __init__(self, target, process_results, wrap_type, build_query, join, args, internal):
         self.target = target
         self.build_query = build_query
         self.join = join
         self.args = args
         self._process_results = process_results
         self._wrap_type = wrap_type
+        self.internal = internal
 
         self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self.join.keys())
 
@@ -140,6 +141,7 @@ class Relationship(FieldBase):
             args=args,
             wrap_type=self._wrap_type,
             process_results=self._process_results,
+            internal=self.internal,
         )
 
     def parent_join_selections(self, parent):

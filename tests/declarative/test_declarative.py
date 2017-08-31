@@ -374,6 +374,29 @@ def test_internal_fields_cannot_be_queried_directly():
     )
 
 
+def test_internal_relationship_fields_cannot_be_queried_directly():
+    class Author(StaticDataObjectType):
+        __records__ = []
+        name = field(type=GraphQLString)
+
+    class Book(StaticDataObjectType):
+        __records__ = []
+        title = field(type=GraphQLString)
+
+    class Root(RootType):
+        authors = many(lambda: StaticDataObjectType.select(Author))
+        books = many(lambda: StaticDataObjectType.select(Book), internal=True)
+
+
+    execute = executor(Root)
+    assert_that(
+        execute("{ books { title } }"),
+        is_invalid_result(errors=contains_inanyorder(
+            has_string(starts_with('Cannot query field "books"')),
+        )),
+    )
+
+
 def test_field_set_can_be_used_to_declare_multiple_fields_in_one_attribute():
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
     BookRecord = attr.make_class("BookRecord", ["title"])

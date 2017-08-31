@@ -189,9 +189,9 @@ class FieldSet(object):
         self._fields = fields
 
 
-def relationship(select_values, relationship_type, args=None):
+def relationship(select_values, relationship_type, args=None, internal=False):
     return LazyFieldDefinition(
-        lambda: select_values()(relationship_type),
+        lambda: select_values()(partial(relationship_type, internal=internal)),
         args=args,
     )
 
