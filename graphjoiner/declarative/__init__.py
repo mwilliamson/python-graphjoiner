@@ -236,7 +236,7 @@ class RelationshipDefinition(FieldDefinition):
         )
 
     def _add_arg(self, arg_name, arg_type, refine_query):
-        if isinstance(arg_type, type) and issubclass(arg_type, InputObjectType):
+        if isinstance(arg_type, InputObjectType):
             read_arg_value = arg_type.__read__
             arg_type = arg_type.__graphql__
         else:
@@ -388,11 +388,13 @@ class InputObjectTypeMeta(type):
             for field in fields().values()
         ]))
 
+        cls.__call__ = lambda self, **kwargs: ArgumentType()(**kwargs)
+
         @staticmethod
         def read_arg_value(value):
             def get_value(field):
                 field_value = value.get(field.field_name, undefined)
-                if field_value is not None and field_value is not undefined and isinstance(field.type, type) and issubclass(field.type, InputObjectType):
+                if field_value is not None and field_value is not undefined and isinstance(field.type, InputObjectType):
                     return field.type.__read__(field_value)
                 else:
                     return field_value
@@ -404,7 +406,7 @@ class InputObjectTypeMeta(type):
 
         cls.__read__ = read_arg_value
 
-        return cls
+        return cls()
 
 
 class InputObjectType(six.with_metaclass(InputObjectTypeMeta, object)):

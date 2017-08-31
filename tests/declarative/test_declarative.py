@@ -611,6 +611,17 @@ class TestInputObjectType(object):
             has_properties(author_selection=None),
         )
 
+    def test_can_instantiate_object_type(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        selection = AuthorSelection(name_starts_with="Bob")
+
+        assert_that(
+            selection,
+            has_properties(name_starts_with="Bob"),
+        )
+
 
 def test_undefined_is_falsey():
     assert_that(bool(undefined), equal_to(False))
