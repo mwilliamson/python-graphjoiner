@@ -124,7 +124,7 @@ class Relationship(FieldBase):
 
         self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self.join.keys())
 
-    def copy(self, target=None, build_query=None, join=None, args=None):
+    def copy(self, target=None, build_query=None, join=None, args=None, internal=None):
         if target is None:
             target = self.target
         if build_query is None:
@@ -133,6 +133,8 @@ class Relationship(FieldBase):
             join = self.join
         if args is None:
             args = self.args
+        if internal is None:
+            internal = self.internal
 
         return Relationship(
             target=target,
@@ -141,7 +143,7 @@ class Relationship(FieldBase):
             args=args,
             wrap_type=self._wrap_type,
             process_results=self._process_results,
-            internal=self.internal,
+            internal=internal,
         )
 
     def parent_join_selections(self, parent):
@@ -257,6 +259,7 @@ def many(target, build_query, **kwargs):
 def extract(relationship, field_name):
     return relationship.copy(
         target=ScalarJoinType(relationship.target, field_name),
+        internal=False,
     )
 
 

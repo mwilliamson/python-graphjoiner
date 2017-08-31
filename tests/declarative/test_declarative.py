@@ -387,13 +387,28 @@ def test_internal_relationship_fields_cannot_be_queried_directly():
         authors = many(lambda: StaticDataObjectType.select(Author))
         books = many(lambda: StaticDataObjectType.select(Book), internal=True)
 
-
     execute = executor(Root)
     assert_that(
         execute("{ books { title } }"),
         is_invalid_result(errors=contains_inanyorder(
             has_string(starts_with('Cannot query field "books"')),
         )),
+    )
+
+
+def test_can_query_fields_extracted_from_internal_fields():
+    class Book(StaticDataObjectType):
+        __records__ = []
+        title = field(type=GraphQLString)
+
+    class Root(RootType):
+        books = many(lambda: StaticDataObjectType.select(Book), internal=True)
+        book_titles = extract(books, lambda: Book.title)
+
+    execute = executor(Root)
+    assert_that(
+        execute("{ bookTitles }"),
+        is_successful_result(data={"bookTitles": []}),
     )
 
 
