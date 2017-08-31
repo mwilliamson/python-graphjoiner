@@ -566,6 +566,15 @@ class TestInputObjectType(object):
             has_properties(name_starts_with="Bob"),
         )
 
+    def test_raw_value_is_available(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        assert_that(
+            AuthorSelection.__read__({"nameStartsWith": "Bob"}),
+            has_properties(raw_={"nameStartsWith": "Bob"}),
+        )
+
     def test_non_null_field_is_read_from_dict(self):
         class AuthorSelection(InputObjectType):
             name_starts_with = field(type=NonNull(GraphQLString))

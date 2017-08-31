@@ -395,8 +395,11 @@ class InputObjectTypeMeta(type):
         def __init__(self, **kwargs):
             attr.attrs(
                 these=dict(
-                    (field.attr_name, attr.attrib(default=undefined))
-                    for field in fields().values()
+                    raw_=attr.attrib(default=undefined),
+                    **dict(
+                        (field.attr_name, attr.attrib(default=undefined))
+                        for field in fields().values()
+                    )
                 ),
                 cmp=False,
                 slots=True,
@@ -414,10 +417,13 @@ class InputObjectTypeMeta(type):
                 field_value = value.get(field.field_name, undefined)
                 return _read_input_value(field_definition.type, field_value)
 
-            return cls(**dict(
-                (field_definition.attr_name, get_value(field_definition))
-                for _, field_definition in field_definitions
-            ))
+            return cls(
+                raw_=value,
+                **dict(
+                    (field_definition.attr_name, get_value(field_definition))
+                    for _, field_definition in field_definitions
+                )
+            )
 
         cls.__read__ = read_arg_value
 
