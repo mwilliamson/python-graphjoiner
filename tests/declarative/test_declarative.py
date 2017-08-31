@@ -1,6 +1,6 @@
 import attr
-from graphql import GraphQLBoolean, GraphQLField, GraphQLInterfaceType, GraphQLString
-from hamcrest import assert_that, contains_inanyorder, equal_to, has_properties, has_string, starts_with
+from graphql import GraphQLBoolean, GraphQLField, GraphQLInterfaceType, GraphQLNonNull, GraphQLString
+from hamcrest import all_of, assert_that, contains_inanyorder, equal_to, has_properties, has_string, instance_of, starts_with
 import pytest
 
 from graphjoiner.declarative import (
@@ -13,6 +13,7 @@ from graphjoiner.declarative import (
     single,
     many,
     RootType,
+    NonNull,
     ObjectType,
     join_builder,
     InterfaceType,
@@ -564,6 +565,15 @@ class TestInputObjectType(object):
             has_properties(name_starts_with="Bob"),
         )
 
+    def test_non_null_field_is_read_from_dict(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=NonNull(GraphQLString))
+
+        assert_that(
+            AuthorSelection.__read__({"nameStartsWith": "Bob"}),
+            has_properties(name_starts_with="Bob"),
+        )
+
     def test_missing_fields_have_value_of_undefined(self):
         class AuthorSelection(InputObjectType):
             name_starts_with = field(type=GraphQLString)
@@ -579,6 +589,20 @@ class TestInputObjectType(object):
 
         class BookSelection(InputObjectType):
             author_selection = field(type=AuthorSelection)
+
+        assert_that(
+            BookSelection.__read__({"authorSelection": {"nameStartsWith": "Bob"}}),
+            has_properties(
+                author_selection=has_properties(name_starts_with="Bob"),
+            ),
+        )
+
+    def test_non_null_fields_are_recursively_read(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        class BookSelection(InputObjectType):
+            author_selection = field(type=NonNull(AuthorSelection))
 
         assert_that(
             BookSelection.__read__({"authorSelection": {"nameStartsWith": "Bob"}}),
@@ -636,6 +660,16 @@ class TestInputObjectType(object):
 
 def test_undefined_is_falsey():
     assert_that(bool(undefined), equal_to(False))
+
+
+def test_non_null_type_can_wrap_graphql_core_type():
+    assert_that(
+        NonNull(GraphQLString).__graphql__,
+        all_of(
+            instance_of(GraphQLNonNull),
+            has_properties(of_type=GraphQLString)
+        ),
+    )
 
 
 class TestSnakeCaseToCamelCase(object):

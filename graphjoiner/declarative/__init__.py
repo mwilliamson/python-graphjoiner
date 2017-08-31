@@ -5,7 +5,7 @@ import re
 import types
 
 import attr
-from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType
+from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType, GraphQLNonNull
 import six
 
 import graphjoiner
@@ -24,6 +24,14 @@ def executor(root, mutation=None):
 
 class Type(object):
     pass
+
+
+class InputType(Type):
+    pass
+
+
+def _is_declarative_input_type(type_):
+    return (isinstance(type_, type) and issubclass(type_, InputType)) or isinstance(type_, InputType)
 
 
 class ObjectTypeMeta(type):
@@ -142,18 +150,18 @@ def field(**kwargs):
 
 class SimpleFieldDefinition(FieldDefinition):
     def __init__(self, type, **kwargs):
-        self._type = type
+        self.type = type
         self._kwargs = kwargs
 
     def instantiate(self):
-        type_ = _to_graphql_core_type(self._type)
+        type_ = _to_graphql_core_type(self.type)
         return graphjoiner.field(type=type_, **self._kwargs)
 
 
 def _to_graphql_core_type(type_):
     if isinstance(type_, types.LambdaType):
         return _to_graphql_core_type(type_())
-    elif isinstance(type_, type) and issubclass(type_, Type):
+    elif (isinstance(type_, type) and issubclass(type_, Type)) or isinstance(type_, Type):
         return type_.__graphql__
     else:
         return type_
@@ -373,6 +381,7 @@ class InputObjectTypeMeta(type):
         if attrs.get("__abstract__"):
             return cls
 
+        field_definitions = get_field_definitions(cls)
         fields = lazy(_declare_fields(cls))
 
         cls.__graphql__ = GraphQLInputObjectType(
@@ -400,16 +409,14 @@ class InputObjectTypeMeta(type):
 
         @staticmethod
         def read_arg_value(value):
-            def get_value(field):
+            def get_value(field_definition):
+                field = field_definition.__get__(None, cls)
                 field_value = value.get(field.field_name, undefined)
-                if field_value is not None and field_value is not undefined and isinstance(field.type, type) and issubclass(field.type, InputObjectType):
-                    return field.type.__read__(field_value)
-                else:
-                    return field_value
+                return _read_input_value(field_definition.type, field_value)
 
             return cls(**dict(
-                (field.attr_name, get_value(field))
-                for field in fields().values()
+                (field_definition.attr_name, get_value(field_definition))
+                for _, field_definition in field_definitions
             ))
 
         cls.__read__ = read_arg_value
@@ -417,7 +424,14 @@ class InputObjectTypeMeta(type):
         return cls
 
 
-class InputObjectType(six.with_metaclass(InputObjectTypeMeta, object)):
+def _read_input_value(input_type, value):
+    if value is not None and value is not undefined and _is_declarative_input_type(input_type):
+        return input_type.__read__(value)
+    else:
+        return value
+
+
+class InputObjectType(six.with_metaclass(InputObjectTypeMeta, InputType)):
     __abstract__ = True
 
 
@@ -452,3 +466,15 @@ class _Undefined(object):
 
 
 undefined = _Undefined()
+
+
+class NonNull(InputType):
+    def __init__(self, of_type):
+        self._of_type = of_type
+
+    def __read__(self, value):
+        return _read_input_value(self._of_type, value)
+
+    @property
+    def __graphql__(self):
+        return GraphQLNonNull(_to_graphql_core_type(self._of_type))
