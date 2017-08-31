@@ -236,7 +236,7 @@ class RelationshipDefinition(FieldDefinition):
         )
 
     def _add_arg(self, arg_name, arg_type, refine_query):
-        if isinstance(arg_type, InputObjectType):
+        if isinstance(arg_type, type) and issubclass(arg_type, InputObjectType):
             read_arg_value = arg_type.__read__
             arg_type = arg_type.__graphql__
         else:
@@ -383,30 +383,38 @@ class InputObjectTypeMeta(type):
             ),
         )
 
-        ArgumentType = lazy(lambda: attr.make_class(cls.__name__, dict(
-            (field.attr_name, attr.attrib(default=undefined))
-            for field in fields().values()
-        )))
+        def __init__(self, **kwargs):
+            attr.attrs(
+                these=dict(
+                    (field.attr_name, attr.attrib(default=undefined))
+                    for field in fields().values()
+                ),
+                cmp=False,
+                slots=True,
+                frozen=True,
+            )(cls)
+            return cls.__init__(self, **kwargs)
 
-        cls.__call__ = lambda self, **kwargs: ArgumentType()(**kwargs)
+        cls.__init__ = __init__
+
 
         @staticmethod
         def read_arg_value(value):
             def get_value(field):
                 field_value = value.get(field.field_name, undefined)
-                if field_value is not None and field_value is not undefined and isinstance(field.type, InputObjectType):
+                if field_value is not None and field_value is not undefined and isinstance(field.type, type) and issubclass(field.type, InputObjectType):
                     return field.type.__read__(field_value)
                 else:
                     return field_value
 
-            return ArgumentType()(**dict(
+            return cls(**dict(
                 (field.attr_name, get_value(field))
                 for field in fields().values()
             ))
 
         cls.__read__ = read_arg_value
 
-        return cls()
+        return cls
 
 
 class InputObjectType(six.with_metaclass(InputObjectTypeMeta, object)):
