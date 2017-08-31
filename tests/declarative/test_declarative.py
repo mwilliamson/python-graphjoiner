@@ -1,6 +1,6 @@
 import attr
 from graphql import GraphQLBoolean, GraphQLField, GraphQLInterfaceType, GraphQLNonNull, GraphQLString
-from hamcrest import all_of, assert_that, contains_inanyorder, equal_to, has_properties, has_string, instance_of, starts_with
+from hamcrest import all_of, assert_that, contains, contains_inanyorder, equal_to, has_properties, has_string, instance_of, starts_with
 import pytest
 
 from graphjoiner.declarative import (
@@ -11,6 +11,7 @@ from graphjoiner.declarative import (
     first_or_none,
     InputObjectType,
     single,
+    List,
     many,
     RootType,
     NonNull,
@@ -574,6 +575,15 @@ class TestInputObjectType(object):
             has_properties(name_starts_with="Bob"),
         )
 
+    def test_list_field_is_read_from_dict(self):
+        class AuthorSelection(InputObjectType):
+            names = field(type=List(GraphQLString))
+
+        assert_that(
+            AuthorSelection.__read__({"names": ["Bob"]}),
+            has_properties(names=["Bob"]),
+        )
+
     def test_missing_fields_have_value_of_undefined(self):
         class AuthorSelection(InputObjectType):
             name_starts_with = field(type=GraphQLString)
@@ -608,6 +618,20 @@ class TestInputObjectType(object):
             BookSelection.__read__({"authorSelection": {"nameStartsWith": "Bob"}}),
             has_properties(
                 author_selection=has_properties(name_starts_with="Bob"),
+            ),
+        )
+
+    def test_list_fields_are_recursively_read(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        class BookSelection(InputObjectType):
+            author_selections = field(type=List(AuthorSelection))
+
+        assert_that(
+            BookSelection.__read__({"authorSelections": [{"nameStartsWith": "Bob"}]}),
+            has_properties(
+                author_selections=contains(has_properties(name_starts_with="Bob")),
             ),
         )
 

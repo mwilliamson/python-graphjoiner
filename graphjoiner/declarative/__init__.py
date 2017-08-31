@@ -5,7 +5,7 @@ import re
 import types
 
 import attr
-from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType, GraphQLNonNull
+from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType, GraphQLList, GraphQLNonNull
 import six
 
 import graphjoiner
@@ -478,3 +478,18 @@ class NonNull(InputType):
     @property
     def __graphql__(self):
         return GraphQLNonNull(_to_graphql_core_type(self._of_type))
+
+
+class List(InputType):
+    def __init__(self, of_type):
+        self._of_type = of_type
+
+    def __read__(self, value):
+        if value is None or value is undefined:
+            return value
+        else:
+            return [_read_input_value(self._of_type, element) for element in value]
+
+    @property
+    def __graphql__(self):
+        return GraphQLList(_to_graphql_core_type(self._of_type))
