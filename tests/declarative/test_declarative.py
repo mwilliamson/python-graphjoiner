@@ -622,6 +622,17 @@ class TestInputObjectType(object):
             has_properties(name_starts_with="Bob"),
         )
 
+    def test_unspecified_fields_are_undefined_when_instantiating_input_object_type(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString)
+
+        selection = AuthorSelection()
+
+        assert_that(
+            selection,
+            has_properties(name_starts_with=undefined),
+        )
+
 
 def test_undefined_is_falsey():
     assert_that(bool(undefined), equal_to(False))

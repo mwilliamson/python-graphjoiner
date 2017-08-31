@@ -383,10 +383,10 @@ class InputObjectTypeMeta(type):
             ),
         )
 
-        ArgumentType = lazy(lambda: attr.make_class(cls.__name__, [
-            field.attr_name
+        ArgumentType = lazy(lambda: attr.make_class(cls.__name__, dict(
+            (field.attr_name, attr.attrib(default=undefined))
             for field in fields().values()
-        ]))
+        )))
 
         cls.__call__ = lambda self, **kwargs: ArgumentType()(**kwargs)
 
