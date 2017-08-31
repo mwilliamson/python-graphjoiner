@@ -1,5 +1,5 @@
 import collections
-from functools import partial
+from functools import partial, wraps
 import inspect
 import re
 import types
@@ -228,14 +228,21 @@ class RelationshipDefinition(FieldDefinition):
         if isinstance(arg_type, type) and issubclass(arg_type, InputObjectType):
             arg_type = arg_type.__graphql__
 
-        func_args, _, _, _ = inspect.getargspec(refine_query)
-        extra_func_args = func_args[2:]
-        if "context" not in extra_func_args:
-            original_refine_query = refine_query
-            def refine_query(query, arg_value, context):
-                return original_refine_query(query, arg_value)
+        self._args.append((arg_name, arg_type, _optional_argument("context", refine_query)))
 
-        self._args.append((arg_name, arg_type, refine_query))
+
+def _optional_argument(arg_name, func):
+    func_args, _, _, _ = inspect.getargspec(func)
+    extra_func_args = func_args[2:]
+    if arg_name in extra_func_args:
+        return func
+    else:
+        @wraps(func)
+        def new_func(*args, **kwargs):
+            del kwargs[arg_name]
+            return func(*args, **kwargs)
+
+        return new_func
 
 
 def extract(relationship, field):
