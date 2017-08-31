@@ -9,6 +9,7 @@ from graphjoiner.declarative import (
     field,
     field_set,
     first_or_none,
+    InputObjectType,
     single,
     many,
     RootType,
@@ -518,6 +519,35 @@ def test_fields_can_be_defined_on_superclass():
         author = single(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("{ author { name } }")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))
+
+
+def test_can_define_input_object_types():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class AuthorSelection(InputObjectType):
+        name_starts_with = field(type=GraphQLString)
+
+    class Author(StaticDataObjectType):
+        __records__ = [
+            AuthorRecord("PG Wodehouse"),
+            AuthorRecord("Joseph Heller"),
+        ]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+        @author.arg("selection", AuthorSelection)
+        def author_arg_selection(records, selection):
+            return list(filter(
+                lambda record: record.name.startswith(selection["nameStartsWith"]),
+                records,
+            ))
+
+    result = executor(Root)("""{ author(selection: {nameStartsWith: "P"}) { name } }""")
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))

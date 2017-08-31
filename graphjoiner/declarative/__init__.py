@@ -4,7 +4,7 @@ import inspect
 import re
 import types
 
-from graphql import GraphQLArgument, GraphQLInterfaceType
+from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType
 import six
 
 import graphjoiner
@@ -225,6 +225,9 @@ class RelationshipDefinition(FieldDefinition):
         )
 
     def _add_arg(self, arg_name, arg_type, refine_query):
+        if isinstance(arg_type, type) and issubclass(arg_type, InputObjectType):
+            arg_type = arg_type.__graphql__
+
         func_args, _, _, _ = inspect.getargspec(refine_query)
         extra_func_args = func_args[2:]
         if "context" not in extra_func_args:
@@ -336,6 +339,29 @@ class InterfaceTypeMeta(type):
 
 class InterfaceType(six.with_metaclass(InterfaceTypeMeta, Type)):
     __abstract__ = True
+
+
+class InputObjectTypeMeta(type):
+    def __new__(meta, name, bases, attrs):
+        cls = super(InputObjectTypeMeta, meta).__new__(meta, name, bases, attrs)
+
+        def fields():
+            fields = _declare_fields(cls)()
+            return dict(
+                (key, field.to_graphql_input_field())
+                for key, field in six.iteritems(fields)
+            )
+
+        cls.__graphql__ = GraphQLInputObjectType(
+            name=cls.__name__,
+            fields=fields,
+        )
+
+        return cls
+
+
+class InputObjectType(six.with_metaclass(InputObjectTypeMeta, object)):
+    pass
 
 
 def field_set(**fields):

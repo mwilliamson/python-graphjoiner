@@ -3,7 +3,7 @@ from functools import partial
 from itertools import groupby
 
 from attr import assoc
-from graphql import GraphQLError, GraphQLField, GraphQLObjectType, GraphQLList, GraphQLSchema
+from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
 from graphql.language.parser import parse
 from graphql.validation import validate
@@ -94,6 +94,9 @@ class Field(FieldBase):
             resolver=_resolve_fetched_field,
             args=self.args,
         )
+
+    def to_graphql_input_field(self):
+        return GraphQLInputObjectField(type=self.type)
 
 
 def _resolve_fetched_field(source, args, context, info):
