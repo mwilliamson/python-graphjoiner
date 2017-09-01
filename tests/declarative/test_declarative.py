@@ -640,6 +640,15 @@ class TestInputObjectType(object):
             has_properties(name_starts_with=undefined),
         )
 
+    def test_when_default_is_set_then_missing_fields_have_default_value(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=GraphQLString, default=None)
+
+        assert_that(
+            AuthorSelection.__read__({}),
+            has_properties(name_starts_with=None),
+        )
+
     def test_fields_are_recursively_read(self):
         class AuthorSelection(InputObjectType):
             name_starts_with = field(type=GraphQLString)

@@ -397,7 +397,7 @@ class InputObjectTypeMeta(type):
                 these=dict(
                     raw_=attr.attrib(default=undefined),
                     **dict(
-                        (field.attr_name, attr.attrib(default=undefined))
+                        (field.attr_name, attr.attrib(default=getattr(field, "default", undefined)))
                         for field in fields().values()
                     )
                 ),
@@ -414,7 +414,7 @@ class InputObjectTypeMeta(type):
         def read_arg_value(value):
             def get_value(field_definition):
                 field = field_definition.__get__(None, cls)
-                field_value = value.get(field.field_name, undefined)
+                field_value = value[field.field_name]
                 return _read_input_value(field_definition.type, field_value)
 
             return cls(
@@ -422,6 +422,7 @@ class InputObjectTypeMeta(type):
                 **dict(
                     (field_definition.attr_name, get_value(field_definition))
                     for _, field_definition in field_definitions
+                    if field_definition.field_name in value
                 )
             )
 
