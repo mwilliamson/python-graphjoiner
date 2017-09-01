@@ -1,5 +1,5 @@
 import graphql
-from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries
+from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries, has_string, starts_with
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine, Column, ForeignKey, Integer, literal, String, Unicode
@@ -15,7 +15,7 @@ from graphjoiner.declarative.sqlalchemy import (
     _find_join_candidates,
     _sql_type_to_graphql_type,
 )
-from ..matchers import is_successful_result
+from ..matchers import is_invalid_result, is_successful_result
 
 
 def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_objects():
@@ -310,6 +310,45 @@ def test_polymorphic_type_is_filtered_by_discriminator_when_there_are_no_polymor
     }))
 
 
+def test_column_field_can_be_marked_as_internal():
+    Base = declarative_base()
+
+    class AuthorRecord(Base):
+        __tablename__ = "author"
+
+        c_id = Column(Integer, primary_key=True)
+        c_name = Column(Unicode, nullable=False)
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+
+        @staticmethod
+        def __primary_key__():
+            return [AuthorRecord.c_name]
+
+        id = column_field(AuthorRecord.c_id, internal=True)
+        name = column_field(AuthorRecord.c_name)
+
+    class Root(RootType):
+        authors = many(lambda: select(Author))
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    result = executor(Root)("""{
+        authors {
+            id
+        }
+    }""", context=QueryContext(session=Session(engine)))
+    assert_that(
+        result,
+        is_invalid_result(errors=contains_inanyorder(
+            has_string(starts_with('Cannot query field "id"')),
+        )),
+    )
+
+
 def test_distinct_on_is_preserved_when_fetching_immediates():
     # TODO: set up PostgreSQL tests to get this working
     return
@@ -408,7 +447,7 @@ class TestFindJoinCandidates(object):
 
         class AuthorRecord(Base):
             __tablename__ = "author"
-            
+
             c_id = Column(Integer, primary_key=True)
 
         class BookRecord(Base):
@@ -427,20 +466,20 @@ class TestFindJoinCandidates(object):
 
             id = column_field(BookRecord.c_id)
             author_id = column_field(BookRecord.c_author_id)
-        
+
         candidates = list(_find_join_candidates(Book, Author))
-        
+
         assert_that(candidates, equal_to([
             (Book.__dict__["author_id"], Author.__dict__["id"]),
         ]))
-        
-        
+
+
     def test_can_find_foreign_key_from_local_to_target_column_that_isnt_primary_key(self):
         Base = declarative_base()
 
         class AuthorRecord(Base):
             __tablename__ = "author"
-            
+
             c_id = Column(Integer, primary_key=True)
             c_code = Column(Integer)
 
@@ -461,9 +500,9 @@ class TestFindJoinCandidates(object):
 
             id = column_field(BookRecord.c_id)
             author_code = column_field(BookRecord.c_author_code)
-        
+
         candidates = list(_find_join_candidates(Book, Author))
-        
+
         assert_that(candidates, equal_to([
             (Book.__dict__["author_code"], Author.__dict__["code"]),
         ]))

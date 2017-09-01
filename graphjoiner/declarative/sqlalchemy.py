@@ -50,12 +50,13 @@ class SqlAlchemyObjectType(ObjectType):
         return query.with_session(cls.__get_session__(context)).all()
 
 
-def column_field(column, type=None):
+def column_field(column, type=None, internal=False):
     if type is None:
         type = _sql_type_to_graphql_type(column.type)
     return field(
         column=column,
         type=type,
+        internal=internal,
     )
 
 
@@ -123,7 +124,7 @@ def _find_join_candidates(local, target):
 
 def _find_join_candidates_directional(local, remote):
     remote_tables = sqlalchemy.inspect(remote.__model__).tables
-    
+
     for field_definition in _get_simple_field_definitions(local):
         orm_column = field_definition._kwargs["column"]
         if hasattr(orm_column, "property"):
