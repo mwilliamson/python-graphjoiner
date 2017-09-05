@@ -9,7 +9,7 @@ from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceTyp
 import six
 
 import graphjoiner
-from .lazy import lazy
+from .lazy import lazy, lazy_property
 
 
 def executor(root, mutation=None):
@@ -150,8 +150,15 @@ def field(**kwargs):
 
 class SimpleFieldDefinition(FieldDefinition):
     def __init__(self, type, **kwargs):
-        self.type = type
+        self._type = type
         self._kwargs = kwargs
+
+    @lazy_property
+    def type(self):
+        if isinstance(self._type, types.LambdaType):
+            return self._type()
+        else:
+            return self._type
 
     def instantiate(self):
         type_ = _to_graphql_core_type(self.type)
@@ -159,9 +166,7 @@ class SimpleFieldDefinition(FieldDefinition):
 
 
 def _to_graphql_core_type(type_):
-    if isinstance(type_, types.LambdaType):
-        return _to_graphql_core_type(type_())
-    elif (isinstance(type_, type) and issubclass(type_, Type)) or isinstance(type_, Type):
+    if (isinstance(type_, type) and issubclass(type_, Type)) or isinstance(type_, Type):
         return type_.__graphql__
     else:
         return type_
