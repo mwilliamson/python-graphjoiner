@@ -330,12 +330,25 @@ and we want the ``books`` field to be sorted by title:
 
     from graphjoiner.declarative import many, RootType, select
 
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+
+        ...
+
+        @staticmethod
+        def order_by_title(query):
+             # query is an instance of sqlalchemy.orm.Query
+             return query.order_by(BookRecord.title)
+
     class Root(RootType):
         ...
+
         books = many(lambda: select(
             Book,
-            filter=lambda query: query.order_by(BookRecord.title),
+            filter=Book.order_by_title,
         ))
+
+Relationships can have
 
 ``select(target, join_query=None, join_fields=None)``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -529,6 +542,18 @@ is roughly equivalent to this definition using field sets:
         )
 
 Field sets are useful when a set of fields needs to be generated dynamically.
+
+Input object types
+^^^^^^^^^^^^^^^^^^
+
+Define input types by inheriting from `InputObjectType`:
+
+.. code-block:: python
+
+    from graphjoiner.declarative import InputObjectType
+
+    class AddBookInput(InputObjectType):
+        title = field(type=GraphQLString)
 
 Core Example
 ------------
