@@ -18,9 +18,9 @@ from graphjoiner.declarative import (
     ObjectType,
     join_builder,
     InterfaceType,
+    parse_schema,
     select,
     undefined,
-    whitelist,
     _snake_case_to_camel_case,
 )
 from ..matchers import is_invalid_result, is_successful_result
@@ -788,7 +788,7 @@ def test_query_can_be_executed_with_whitelist():
     name_query = "{ author { name } }"
     execute = executor(Root)
 
-    schema_whitelist = whitelist("""
+    schema_whitelist = parse_schema("""
         schema {
             query: Root
         }
@@ -805,14 +805,14 @@ def test_query_can_be_executed_with_whitelist():
     assert_that(execute(name_query), is_successful_result(data={
         "author": None,
     }))
-    assert_that(execute(name_query, whitelist=schema_whitelist), is_successful_result(data={
+    assert_that(execute(name_query, schema=schema_whitelist), is_successful_result(data={
         "author": None,
     }))
 
     assert_that(execute(id_query), is_successful_result(data={
         "author": None,
     }))
-    assert_that(execute(id_query, whitelist=schema_whitelist), is_invalid_result(errors=contains_inanyorder(
+    assert_that(execute(id_query, schema=schema_whitelist), is_invalid_result(errors=contains_inanyorder(
         has_string(starts_with('Cannot query field "id"')),
     )))
 
@@ -889,7 +889,7 @@ def test_variables_are_validated_against_whitelist():
         "authors": [{"name": "PG Wodehouse"}],
     }))
 
-    schema_whitelist = whitelist("""
+    schema_whitelist = parse_schema("""
         schema {
             query: Root
         }
@@ -907,7 +907,7 @@ def test_variables_are_validated_against_whitelist():
         }
     """)
 
-    result = execute(query, variables=variables, whitelist=schema_whitelist)
+    result = execute(query, variables=variables, schema=schema_whitelist)
     assert_that(result, is_invalid_result(errors=contains_inanyorder(
         has_string(equal_to('Variable "$selection" got invalid value {"name": "PG Wodehouse"}.\nIn field "name": Unknown field.')),
     )))

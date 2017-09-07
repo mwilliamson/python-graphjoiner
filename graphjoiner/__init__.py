@@ -1,5 +1,4 @@
 import abc
-from functools import partial
 from itertools import groupby
 
 from attr import assoc
@@ -21,35 +20,42 @@ def executor(root, mutation=None):
     else:
         mutation_type = mutation.to_graphql_type()
 
-    schema = GraphQLSchema(
+    default_schema = GraphQLSchema(
         query=root.to_graphql_type(),
         mutation=mutation_type,
     )
-    return partial(_execute, schema, root, mutation=mutation)
+
+    def execute(query, variables=None, context=None, schema=None):
+        # TODO: check that schema is a subset of default_schema
+        if schema is None:
+            schema = default_schema
+
+        return _execute(
+            schema=schema,
+            root=root,
+            mutation=mutation,
+            query=query,
+            variables=variables,
+            context=context,
+        )
+
+    return execute
 
 
 def execute(root, *args, **kwargs):
     return executor(root)(*args, **kwargs)
 
 
-def _execute(schema, root, query, context=None, variables=None, mutation=None, whitelist=None):
+def _execute(schema, root, query, context=None, variables=None, mutation=None):
     try:
         ast = parse(query)
 
-        for schema_to_validate in [whitelist, schema]:
-            if schema_to_validate is not None:
-                validation_errors = validate(schema_to_validate, ast)
-
-                if validation_errors:
-                    return ExecutionResult(
-                        errors=validation_errors,
-                        invalid=True,
-                    )
-
-        if whitelist is None:
-            schema_for_variables = schema
-        else:
-            schema_for_variables = whitelist
+        validation_errors = validate(schema, ast)
+        if validation_errors:
+            return ExecutionResult(
+                errors=validation_errors,
+                invalid=True,
+            )
 
         variable_definitions = [
             variable_definition
@@ -57,7 +63,7 @@ def _execute(schema, root, query, context=None, variables=None, mutation=None, w
             if isinstance(definition, ast_types.OperationDefinition)
             for variable_definition in (definition.variable_definitions or [])
         ]
-        variable_values = get_variable_values(schema_for_variables, variable_definitions, variables)
+        variable_values = get_variable_values(schema, variable_definitions, variables)
 
         request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variable_values)
         data = root.fetch(request.query, None)[0].value
@@ -390,5 +396,5 @@ def RootJoinType(**kwargs):
     return JoinType(fetch_immediates=lambda *_: [()], **kwargs)
 
 
-def whitelist(document):
+def parse_schema(document):
     return build_ast_schema(parse(document))

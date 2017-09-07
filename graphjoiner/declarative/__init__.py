@@ -507,4 +507,4 @@ class List(InputType):
         return GraphQLList(_to_graphql_core_type(self._of_type))
 
 
-whitelist = graphjoiner.whitelist
+parse_schema = graphjoiner.parse_schema
