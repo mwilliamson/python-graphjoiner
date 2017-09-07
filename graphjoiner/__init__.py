@@ -5,6 +5,8 @@ from itertools import groupby
 from attr import assoc
 from graphql import build_ast_schema, GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
+from graphql.execution.values import get_variable_values
+from graphql.language import ast as ast_types
 from graphql.language.parser import parse
 from graphql.validation import validate
 import six
@@ -37,20 +39,34 @@ def _execute(schema, root, query, context=None, variables=None, mutation=None, w
         for schema_to_validate in [whitelist, schema]:
             if schema_to_validate is not None:
                 validation_errors = validate(schema_to_validate, ast)
+
                 if validation_errors:
                     return ExecutionResult(
                         errors=validation_errors,
                         invalid=True,
                     )
 
-        request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variables)
+        if whitelist is None:
+            schema_for_variables = schema
+        else:
+            schema_for_variables = whitelist
+
+        variable_definitions = [
+            variable_definition
+            for definition in ast.definitions
+            if isinstance(definition, ast_types.OperationDefinition)
+            for variable_definition in (definition.variable_definitions or [])
+        ]
+        variable_values = get_variable_values(schema_for_variables, variable_definitions, variables)
+
+        request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variable_values)
         data = root.fetch(request.query, None)[0].value
 
         if request.schema_query is not None:
             schema_result = graphql_execute(
                 schema,
                 request.schema_query,
-                variable_values=variables,
+                variable_values=variable_values,
             )
             if schema_result.invalid:
                 return schema_result

@@ -815,3 +815,99 @@ def test_query_can_be_executed_with_whitelist():
     assert_that(execute(id_query, whitelist=schema_whitelist), is_invalid_result(errors=contains_inanyorder(
         has_string(starts_with('Cannot query field "id"')),
     )))
+
+
+def test_variables_are_validated():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [
+            AuthorRecord("PG Wodehouse"),
+            AuthorRecord("Joseph Heller"),
+        ]
+
+        name = field(type=GraphQLString)
+
+    class AuthorSelection(InputObjectType):
+        limit = field(type=GraphQLInt, default=None)
+
+    class Root(RootType):
+        authors = many(lambda: StaticDataObjectType.select(Author))
+
+        @authors.arg("selection", AuthorSelection)
+        def authors_arg_selection(records, selection):
+            if selection.name is not None:
+                records = list(filter(
+                    lambda record: record.name == selection.name,
+                    records,
+                ))
+            return records
+
+    execute = executor(Root)
+    query = """query ($selection: AuthorSelection!) { authors(selection: $selection) { name } }"""
+    variables = {"selection": {"name": "PG Wodehouse"}}
+
+    result = execute(query, variables=variables)
+    assert_that(result, is_invalid_result(errors=contains_inanyorder(
+        has_string(equal_to('Variable "$selection" got invalid value {"name": "PG Wodehouse"}.\nIn field "name": Unknown field.')),
+    )))
+
+
+def test_variables_are_validated_against_whitelist():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [
+            AuthorRecord("PG Wodehouse"),
+            AuthorRecord("Joseph Heller"),
+        ]
+
+        name = field(type=GraphQLString)
+
+    class AuthorSelection(InputObjectType):
+        limit = field(type=GraphQLInt, default=None)
+        name = field(type=GraphQLString, default=None)
+
+    class Root(RootType):
+        authors = many(lambda: StaticDataObjectType.select(Author))
+
+        @authors.arg("selection", AuthorSelection)
+        def authors_arg_selection(records, selection):
+            if selection.name is not None:
+                records = list(filter(
+                    lambda record: record.name == selection.name,
+                    records,
+                ))
+            return records
+
+    execute = executor(Root)
+    query = """query ($selection: AuthorSelection!) { authors(selection: $selection) { name } }"""
+    variables = {"selection": {"name": "PG Wodehouse"}}
+
+    result = execute(query, variables=variables)
+    assert_that(result, is_successful_result(data={
+        "authors": [{"name": "PG Wodehouse"}],
+    }))
+
+    schema_whitelist = whitelist("""
+        schema {
+            query: Root
+        }
+
+        type Root {
+            authors(selection: AuthorSelection): [Author]
+        }
+
+        input AuthorSelection {
+            limit: Int
+        }
+
+        type Author {
+            name: String
+        }
+    """)
+
+    result = execute(query, variables=variables, whitelist=schema_whitelist)
+    assert_that(result, is_invalid_result(errors=contains_inanyorder(
+        has_string(equal_to('Variable "$selection" got invalid value {"name": "PG Wodehouse"}.\nIn field "name": Unknown field.')),
+    )))
