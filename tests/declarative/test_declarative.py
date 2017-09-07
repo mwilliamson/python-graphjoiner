@@ -1,5 +1,5 @@
 import attr
-from graphql import GraphQLBoolean, GraphQLField, GraphQLInterfaceType, GraphQLNonNull, GraphQLString
+from graphql import GraphQLBoolean, GraphQLField, GraphQLInt, GraphQLInterfaceType, GraphQLNonNull, GraphQLString
 from hamcrest import all_of, assert_that, contains, contains_inanyorder, equal_to, has_properties, has_string, instance_of, starts_with
 import pytest
 
@@ -20,6 +20,7 @@ from graphjoiner.declarative import (
     InterfaceType,
     select,
     undefined,
+    whitelist,
     _snake_case_to_camel_case,
 )
 from ..matchers import is_invalid_result, is_successful_result
@@ -771,3 +772,46 @@ def test_name_of_object_type_can_be_overridden():
 
     assert_that(GeneratedType.__name__, equal_to("User"))
     assert_that(GeneratedType.__graphql__.name, equal_to("User"))
+
+
+def test_query_can_be_executed_with_whitelist():
+    class Author(StaticDataObjectType):
+        __records__ = []
+
+        id = field(type=GraphQLInt)
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+
+    id_query = "{ author { id } }"
+    name_query = "{ author { name } }"
+    execute = executor(Root)
+
+    schema_whitelist = whitelist("""
+        schema {
+            query: Root
+        }
+
+        type Root {
+            author: Author
+        }
+
+        type Author {
+            name: String
+        }
+    """)
+
+    assert_that(execute(name_query), is_successful_result(data={
+        "author": None,
+    }))
+    assert_that(execute(name_query, whitelist=schema_whitelist), is_successful_result(data={
+        "author": None,
+    }))
+
+    assert_that(execute(id_query), is_successful_result(data={
+        "author": None,
+    }))
+    assert_that(execute(id_query, whitelist=schema_whitelist), is_invalid_result(errors=contains_inanyorder(
+        has_string(starts_with('Cannot query field "id"')),
+    )))

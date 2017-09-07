@@ -3,7 +3,7 @@ from functools import partial
 from itertools import groupby
 
 from attr import assoc
-from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLObjectType, GraphQLList, GraphQLSchema
+from graphql import build_ast_schema, GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
 from graphql.language.parser import parse
 from graphql.validation import validate
@@ -30,15 +30,18 @@ def execute(root, *args, **kwargs):
     return executor(root)(*args, **kwargs)
 
 
-def _execute(schema, root, query, context=None, variables=None, mutation=None):
+def _execute(schema, root, query, context=None, variables=None, mutation=None, whitelist=None):
     try:
         ast = parse(query)
-        validation_errors = validate(schema, ast)
-        if validation_errors:
-            return ExecutionResult(
-                errors=validation_errors,
-                invalid=True,
-            )
+
+        for schema_to_validate in [whitelist, schema]:
+            if schema_to_validate is not None:
+                validation_errors = validate(schema_to_validate, ast)
+                if validation_errors:
+                    return ExecutionResult(
+                        errors=validation_errors,
+                        invalid=True,
+                    )
 
         request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variables)
         data = root.fetch(request.query, None)[0].value
@@ -369,3 +372,7 @@ class JoinType(Value):
 
 def RootJoinType(**kwargs):
     return JoinType(fetch_immediates=lambda *_: [()], **kwargs)
+
+
+def whitelist(document):
+    return build_ast_schema(parse(document))
