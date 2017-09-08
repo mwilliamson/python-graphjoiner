@@ -65,7 +65,12 @@ def _execute(schema, root, query, context=None, variables=None, mutation=None):
         ]
         variable_values = get_variable_values(schema, variable_definitions, variables)
 
-        request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variable_values)
+        # The Python implementation of GraphQL currently lacks support
+        # for nulls, so we use the uncoerced variables when handling the
+        # request.
+        #
+        # See: https://github.com/graphql-python/graphql-core/issues/118
+        request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variables)
         data = root.fetch(request.query, None)[0].value
 
         if request.schema_query is not None:

@@ -595,6 +595,43 @@ def test_can_define_input_object_types():
     }))
 
 
+def test_explicitly_null_fields_can_be_differentiated_from_undefined_fields():
+    SelectionRecord = attr.make_class("SelectionRecord", ["name"])
+
+    class SelectionInput(InputObjectType):
+        name = field(type=GraphQLString)
+
+    class Selection(StaticDataObjectType):
+        __records__ = []
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        selection = single(lambda: StaticDataObjectType.select(Selection))
+
+        @selection.arg("selection", SelectionInput)
+        def selection_arg_selection(records, selection):
+            return [SelectionRecord(str(selection.name))]
+
+    def run_query(selection):
+        return executor(Root)(
+            """
+                query ($selection: SelectionInput) {
+                    selection(selection: $selection) { name }
+                }
+            """,
+            variables={"selection": selection},
+        )
+
+    assert_that(run_query({"name": None}), is_successful_result(data={
+        "selection": {"name": "None"},
+    }))
+
+    assert_that(run_query({}), is_successful_result(data={
+        "selection": {"name": "undefined"},
+    }))
+
+
 class TestInputObjectType(object):
     def test_field_is_read_from_dict(self):
         class AuthorSelection(InputObjectType):

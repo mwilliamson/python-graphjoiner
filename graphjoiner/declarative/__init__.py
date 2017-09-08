@@ -476,6 +476,9 @@ class _Undefined(object):
     def __nonzero__(self):
         return False
 
+    def __str__(self):
+        return "undefined"
+
 
 undefined = _Undefined()
 
