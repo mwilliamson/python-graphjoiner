@@ -2,7 +2,7 @@ import abc
 from itertools import groupby
 
 from attr import assoc
-from graphql import build_ast_schema, GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLObjectType, GraphQLList, GraphQLSchema
+from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
 from graphql.execution.values import get_variable_values
 from graphql.language import ast as ast_types
@@ -399,7 +399,3 @@ class JoinType(Value):
 
 def RootJoinType(**kwargs):
     return JoinType(fetch_immediates=lambda *_: [()], **kwargs)
-
-
-def parse_schema(document):
-    return build_ast_schema(parse(document))

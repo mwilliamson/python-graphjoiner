@@ -508,6 +508,3 @@ class List(InputType):
     @property
     def __graphql__(self):
         return GraphQLList(_to_graphql_core_type(self._of_type))
-
-
-parse_schema = graphjoiner.parse_schema

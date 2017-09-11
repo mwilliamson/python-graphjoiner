@@ -18,11 +18,11 @@ from graphjoiner.declarative import (
     ObjectType,
     join_builder,
     InterfaceType,
-    parse_schema,
     select,
     undefined,
     _snake_case_to_camel_case,
 )
+from graphjoiner.schemas import parse_schema
 from ..matchers import is_invalid_result, is_successful_result
 
 
