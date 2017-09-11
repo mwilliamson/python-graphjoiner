@@ -95,7 +95,7 @@ def _is_sub_input_field(subfield, superfield):
         return is_subtype(subfield.type, superfield.type)
 
 
-def common_subtype(types):
+def greatest_common_subtype(types):
     """Merge GraphQL types into a single type
 
     This finds the type that is a subtype of all given types. It is

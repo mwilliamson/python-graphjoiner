@@ -22,7 +22,7 @@ from hamcrest import (
 )
 import pytest
 
-from graphjoiner.schemas import is_subtype, common_subtype, _common_supertype
+from graphjoiner.schemas import is_subtype, greatest_common_subtype, _common_supertype
 
 
 class TestIsSubtype(object):
@@ -595,9 +595,9 @@ class TestCommonSubtype(object):
         )
 
     def _assert_merge(self, types, expected_type):
-        merged = common_subtype(types)
+        merged = greatest_common_subtype(types)
         assert_that(merged, expected_type)
-        assert_that(common_subtype(list(reversed(types))), expected_type)
+        assert_that(greatest_common_subtype(list(reversed(types))), expected_type)
 
         for type_ in types:
             assert is_subtype(merged, type_)
