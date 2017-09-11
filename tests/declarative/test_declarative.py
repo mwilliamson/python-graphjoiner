@@ -811,7 +811,7 @@ def test_name_of_object_type_can_be_overridden():
     assert_that(GeneratedType.__graphql__.name, equal_to("User"))
 
 
-def test_query_can_be_executed_with_whitelist():
+def test_query_can_be_executed_with_subschema():
     class Author(StaticDataObjectType):
         __records__ = []
 
@@ -852,6 +852,42 @@ def test_query_can_be_executed_with_whitelist():
     assert_that(execute(id_query, schema=schema_whitelist), is_invalid_result(errors=contains_inanyorder(
         has_string(starts_with('Cannot query field "id"')),
     )))
+
+
+def test_when_specified_schema_is_not_superschema_then_error_is_raised():
+    class Author(StaticDataObjectType):
+        __records__ = []
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+
+    execute = executor(Root)
+
+    schema_whitelist = parse_schema("""
+        schema {
+            query: Root
+        }
+
+        type Root {
+            author: Author
+        }
+
+        type Author {
+            id: Int
+            name: String
+        }
+    """)
+
+    query = """{
+        author {
+            name
+        }
+    }"""
+
+    error = pytest.raises(ValueError, lambda: execute(query, schema=schema_whitelist))
+    assert_that(str(error.value), equal_to("schema argument must be superschema of main schema"))
 
 
 def test_variables_are_validated():

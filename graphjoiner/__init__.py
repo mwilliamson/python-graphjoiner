@@ -11,6 +11,7 @@ from graphql.validation import validate
 import six
 
 from .requests import request_from_graphql_ast, request_from_graphql_document, Request, field_key
+from .schemas import is_subtype
 from .util import partition, unique
 
 
@@ -26,9 +27,10 @@ def executor(root, mutation=None):
     )
 
     def execute(query, variables=None, context=None, schema=None):
-        # TODO: check that schema is a subset of default_schema
         if schema is None:
             schema = default_schema
+        elif not is_subtype(default_schema, schema):
+            raise ValueError("schema argument must be superschema of main schema")
 
         return _execute(
             schema=schema,
