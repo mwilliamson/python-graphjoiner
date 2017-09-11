@@ -310,6 +310,17 @@ class TestIsSubtype(object):
             ),
         )
 
+    def test_can_handle_recursive_types(self):
+        obj_1 = GraphQLObjectType("Object", fields=lambda: {"self": GraphQLField(type=obj_1)})
+        obj_2 = GraphQLObjectType("Object", fields=lambda: {"self": GraphQLField(type=obj_2)})
+
+        assert is_subtype(obj_1, obj_2)
+
+        obj_1 = GraphQLObjectType("Object", fields=lambda: {"self": GraphQLField(type=obj_1)})
+        obj_2 = GraphQLObjectType("Object", fields=lambda: {"self": GraphQLField(type=GraphQLNonNull(obj_2))})
+
+        assert not is_subtype(obj_1, obj_2)
+
 
 class TestCommonSupertype(object):
     @pytest.mark.parametrize("graphql_type", [

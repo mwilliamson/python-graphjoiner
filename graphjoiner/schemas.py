@@ -17,82 +17,91 @@ def parse_schema(document):
 
 
 def is_subtype(subtype, supertype):
-    if subtype == supertype:
-        return True
+    seen = set()
 
-    elif isinstance(subtype, GraphQLNonNull):
-        if isinstance(supertype, GraphQLNonNull):
-            return is_subtype(subtype.of_type, supertype.of_type)
+    def is_subtype(subtype, supertype):
+        if (subtype, supertype) in seen:
+            return True
         else:
-            return is_subtype(subtype.of_type, supertype)
+            seen.add((subtype, supertype))
+            if subtype == supertype:
+                return True
 
-    elif isinstance(subtype, GraphQLList) and isinstance(supertype, GraphQLList):
-        return is_subtype(subtype.of_type, supertype.of_type)
+            elif isinstance(subtype, GraphQLNonNull):
+                if isinstance(supertype, GraphQLNonNull):
+                    return is_subtype(subtype.of_type, supertype.of_type)
+                else:
+                    return is_subtype(subtype.of_type, supertype)
 
-    elif isinstance(subtype, GraphQLObjectType) and isinstance(supertype, GraphQLObjectType):
-        return _is_object_type_subtype(subtype, supertype)
+            elif isinstance(subtype, GraphQLList) and isinstance(supertype, GraphQLList):
+                return is_subtype(subtype.of_type, supertype.of_type)
 
-    elif isinstance(subtype, GraphQLInputObjectType) and isinstance(supertype, GraphQLInputObjectType):
-        return _is_input_object_type_subtype(subtype, supertype)
+            elif isinstance(subtype, GraphQLObjectType) and isinstance(supertype, GraphQLObjectType):
+                return _is_object_type_subtype(subtype, supertype)
 
-    elif isinstance(subtype, GraphQLSchema) and isinstance(supertype, GraphQLSchema):
-        return all([
-            is_subtype(subtype.get_query_type(), supertype.get_query_type()),
-            supertype.get_mutation_type() is None or is_subtype(subtype.get_mutation_type(), supertype.get_mutation_type()),
-        ])
+            elif isinstance(subtype, GraphQLInputObjectType) and isinstance(supertype, GraphQLInputObjectType):
+                return _is_input_object_type_subtype(subtype, supertype)
 
-    else:
-        return False
+            elif isinstance(subtype, GraphQLSchema) and isinstance(supertype, GraphQLSchema):
+                return all([
+                    is_subtype(subtype.get_query_type(), supertype.get_query_type()),
+                    supertype.get_mutation_type() is None or is_subtype(subtype.get_mutation_type(), supertype.get_mutation_type()),
+                ])
+
+            else:
+                return False
 
 
-def _is_object_type_subtype(subtype, supertype):
-    if subtype.name != supertype.name:
-        return False
-    elif set(subtype.fields.keys()) < set(supertype.fields.keys()):
-        return False
-    else:
-        return all(
-            _is_subfield(subtype.fields[field_name], field)
-            for field_name, field in supertype.fields.items()
+    def _is_object_type_subtype(subtype, supertype):
+        if subtype.name != supertype.name:
+            return False
+        elif set(subtype.fields.keys()) < set(supertype.fields.keys()):
+            return False
+        else:
+            return all(
+                _is_subfield(subtype.fields[field_name], field)
+                for field_name, field in supertype.fields.items()
+            )
+
+
+    def _is_subfield(subfield, superfield):
+        return is_subtype(subfield.type, superfield.type) and all(
+            _is_subarg(subfield.args.get(arg_name), superfield.args.get(arg_name))
+            for arg_name in set(subfield.args.keys()) | set(superfield.args.keys())
         )
 
 
-def _is_subfield(subfield, superfield):
-    return is_subtype(subfield.type, superfield.type) and all(
-        _is_subarg(subfield.args.get(arg_name), superfield.args.get(arg_name))
-        for arg_name in set(subfield.args.keys()) | set(superfield.args.keys())
-    )
+    def _is_subarg(subarg, superarg):
+        if superarg is None:
+            return not isinstance(subarg.type, GraphQLNonNull)
+
+        elif subarg is None:
+            return False
+
+        else:
+            return is_subtype(superarg.type, subarg.type)
 
 
-def _is_subarg(subarg, superarg):
-    if superarg is None:
-        return not isinstance(subarg.type, GraphQLNonNull)
+    def _is_input_object_type_subtype(subtype, supertype):
+        if subtype.name != supertype.name:
+            return False
+        else:
+            return all(
+                _is_sub_input_field(subtype.fields.get(field_name), supertype.fields.get(field_name))
+                for field_name in set(subtype.fields.keys()) | set(supertype.fields.keys())
+            )
 
-    elif subarg is None:
-        return False
+    def _is_sub_input_field(subfield, superfield):
+        if superfield is None:
+            return True
 
-    else:
-        return is_subtype(superarg.type, subarg.type)
+        elif subfield is None:
+            return not isinstance(superfield.type, GraphQLNonNull)
 
+        else:
+            return is_subtype(subfield.type, superfield.type)
 
-def _is_input_object_type_subtype(subtype, supertype):
-    if subtype.name != supertype.name:
-        return False
-    else:
-        return all(
-            _is_sub_input_field(subtype.fields.get(field_name), supertype.fields.get(field_name))
-            for field_name in set(subtype.fields.keys()) | set(supertype.fields.keys())
-        )
-
-def _is_sub_input_field(subfield, superfield):
-    if superfield is None:
-        return True
-
-    elif subfield is None:
-        return not isinstance(superfield.type, GraphQLNonNull)
-
-    else:
-        return is_subtype(subfield.type, superfield.type)
+    return is_subtype(subtype, supertype)
 
 
 def greatest_common_subtype(types):
