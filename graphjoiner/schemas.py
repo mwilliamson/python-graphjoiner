@@ -55,7 +55,7 @@ def is_subtype(subtype, supertype):
     def _is_object_type_subtype(subtype, supertype):
         if subtype.name != supertype.name:
             return False
-        elif set(subtype.fields.keys()) < set(supertype.fields.keys()):
+        elif not (set(subtype.fields.keys()) >= set(supertype.fields.keys())):
             return False
         else:
             return all(

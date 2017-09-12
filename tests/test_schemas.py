@@ -107,6 +107,12 @@ class TestIsSubtype(object):
             GraphQLObjectType("Object", fields={"id": GraphQLField(type=GraphQLInt), "name": GraphQLField(type=GraphQLString)}),
         )
 
+    def test_when_object_type_has_same_name_and_has_different_field_name_then_it_is_not_a_subtype(self):
+        assert not is_subtype(
+            GraphQLObjectType("Object", fields={"id": GraphQLField(type=GraphQLString)}),
+            GraphQLObjectType("Object", fields={"name": GraphQLField(type=GraphQLString)}),
+        )
+
     def test_when_input_object_type_has_same_name_and_superset_of_fields_then_it_is_a_subtype(self):
         assert is_subtype(
             GraphQLInputObjectType("Object", {"id": GraphQLInputObjectField(type=GraphQLInt), "name": GraphQLInputObjectField(type=GraphQLString)}),
