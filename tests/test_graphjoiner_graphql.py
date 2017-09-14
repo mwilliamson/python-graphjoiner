@@ -128,7 +128,7 @@ def root():
 class TestGraphJoiner(ExecutionTestCases):
     def execute(self, query, variables=None):
         schema = GraphQLSchema(
-            query=root.to_graphql_type(),
+            query=root.to_graphql_type().of_type,
         )
 
         result = graphql(schema, query, variable_values=variables)

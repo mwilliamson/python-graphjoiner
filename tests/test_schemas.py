@@ -13,17 +13,26 @@ from graphql import (
     GraphQLString,
 )
 from hamcrest import (
-    all_of,
     assert_that,
     equal_to,
     has_entries,
     has_properties,
-    instance_of,
 )
 import pytest
 
 from graphjoiner.schemas import is_subtype, greatest_common_subtype, _common_supertype
-
+from .matchers import (
+    is_arg,
+    is_field,
+    is_list_type,
+    is_int,
+    is_input_field,
+    is_input_object_type,
+    is_non_null,
+    is_object_type,
+    is_schema,
+    is_string,
+)
 
 class TestIsSubtype(object):
     @pytest.mark.parametrize("graphql_type", [
@@ -344,13 +353,13 @@ class TestCommonSupertype(object):
     def test_non_null_type_is_merged_with_nullable_type_to_nullable_type(self):
         self._assert_merge(
             [GraphQLNonNull(GraphQLInt), GraphQLInt],
-            _is_int,
+            is_int,
         )
 
     def test_non_null_type_is_merged_with_same_non_null_type_to_same_type(self):
         self._assert_merge(
             [GraphQLNonNull(GraphQLInt), GraphQLNonNull(GraphQLInt)],
-            _is_non_null(_is_int),
+            is_non_null(is_int),
         )
 
     def test_types_within_non_null_types_are_merged(self):
@@ -363,9 +372,9 @@ class TestCommonSupertype(object):
                     "name": GraphQLInputObjectField(type=GraphQLString),
                 })),
             ],
-            _is_non_null(_is_input_object_type(fields=has_entries({
-                "id": _is_input_field(type=_is_int),
-                "name": _is_input_field(type=_is_string),
+            is_non_null(is_input_object_type(fields=has_entries({
+                "id": is_input_field(type=is_int),
+                "name": is_input_field(type=is_string),
             }))),
         )
 
@@ -379,9 +388,9 @@ class TestCommonSupertype(object):
                     "name": GraphQLInputObjectField(type=GraphQLString),
                 })),
             ],
-            _is_list_type(_is_input_object_type(fields=has_entries({
-                "id": _is_input_field(type=_is_int),
-                "name": _is_input_field(type=_is_string),
+            is_list_type(is_input_object_type(fields=has_entries({
+                "id": is_input_field(type=is_int),
+                "name": is_input_field(type=is_string),
             }))),
         )
 
@@ -408,9 +417,9 @@ class TestCommonSupertype(object):
                     "name": GraphQLInputObjectField(type=GraphQLString),
                 }),
             ],
-            _is_input_object_type(fields=has_entries({
-                "id": _is_input_field(type=_is_int),
-                "name": _is_input_field(type=_is_string),
+            is_input_object_type(fields=has_entries({
+                "id": is_input_field(type=is_int),
+                "name": is_input_field(type=is_string),
             })),
         )
 
@@ -424,8 +433,8 @@ class TestCommonSupertype(object):
                     "id": GraphQLInputObjectField(type=GraphQLInt),
                 }),
             ],
-            _is_input_object_type(fields=has_entries({
-                "id": _is_input_field(type=_is_int),
+            is_input_object_type(fields=has_entries({
+                "id": is_input_field(type=is_int),
             })),
         )
 
@@ -454,13 +463,13 @@ class TestCommonSubtype(object):
     def test_non_null_type_is_merged_with_nullable_type_to_non_null_type(self):
         self._assert_merge(
             [GraphQLNonNull(GraphQLInt), GraphQLInt],
-            _is_non_null(_is_int),
+            is_non_null(is_int),
         )
 
     def test_non_null_type_is_merged_with_same_non_null_type_to_same_type(self):
         self._assert_merge(
             [GraphQLNonNull(GraphQLInt), GraphQLNonNull(GraphQLInt)],
-            _is_non_null(_is_int),
+            is_non_null(is_int),
         )
 
     def test_types_within_non_null_types_are_merged(self):
@@ -473,9 +482,9 @@ class TestCommonSubtype(object):
                     "name": GraphQLField(type=GraphQLString),
                 })),
             ],
-            _is_non_null(_is_object_type(fields=has_entries({
-                "id": _is_field(type=_is_int),
-                "name": _is_field(type=_is_string),
+            is_non_null(is_object_type(fields=has_entries({
+                "id": is_field(type=is_int),
+                "name": is_field(type=is_string),
             }))),
         )
 
@@ -489,9 +498,9 @@ class TestCommonSubtype(object):
                     "name": GraphQLField(type=GraphQLString),
                 })),
             ],
-            _is_list_type(_is_object_type(fields=has_entries({
-                "id": _is_field(type=_is_int),
-                "name": _is_field(type=_is_string),
+            is_list_type(is_object_type(fields=has_entries({
+                "id": is_field(type=is_int),
+                "name": is_field(type=is_string),
             }))),
         )
 
@@ -518,9 +527,9 @@ class TestCommonSubtype(object):
                     "name": GraphQLField(type=GraphQLString),
                 }),
             ],
-            _is_object_type(fields=has_entries({
-                "id": _is_field(type=_is_int),
-                "name": _is_field(type=_is_string),
+            is_object_type(fields=has_entries({
+                "id": is_field(type=is_int),
+                "name": is_field(type=is_string),
             })),
         )
 
@@ -534,8 +543,8 @@ class TestCommonSubtype(object):
                     "id": GraphQLField(type=GraphQLInt),
                 }),
             ],
-            _is_object_type(fields=has_entries({
-                "id": _is_field(type=_is_non_null(_is_int)),
+            is_object_type(fields=has_entries({
+                "id": is_field(type=is_non_null(is_int)),
             })),
         )
 
@@ -558,10 +567,10 @@ class TestCommonSubtype(object):
                     ),
                 }),
             ],
-            _is_object_type(fields=has_entries({
-                "id": _is_field(args=has_entries({
-                    "id": _is_arg(type=_is_int),
-                    "name": _is_arg(type=_is_string),
+            is_object_type(fields=has_entries({
+                "id": is_field(args=has_entries({
+                    "id": is_arg(type=is_int),
+                    "name": is_arg(type=is_string),
                 })),
             })),
         )
@@ -582,9 +591,9 @@ class TestCommonSubtype(object):
                     ),
                 }),
             ],
-            _is_object_type(fields=has_entries({
-                "id": _is_field(args=has_entries({
-                    "id": _is_arg(type=_is_int),
+            is_object_type(fields=has_entries({
+                "id": is_field(args=has_entries({
+                    "id": is_arg(type=is_int),
                 })),
             })),
         )
@@ -603,10 +612,10 @@ class TestCommonSubtype(object):
                     }),
                 ),
             ],
-            _is_schema(
-                query=_is_object_type(fields=has_entries({
-                    "id": _is_field(type=_is_int),
-                    "name": _is_field(type=_is_string),
+            is_schema(
+                query=is_object_type(fields=has_entries({
+                    "id": is_field(type=is_int),
+                    "name": is_field(type=is_string),
                 })),
             ),
         )
@@ -630,59 +639,3 @@ def object_type(request):
         (field_name, field(type=field_type))
         for field_name, field_type in field_types.items()
     ))
-
-
-_is_int = equal_to(GraphQLInt)
-_is_string = equal_to(GraphQLString)
-
-
-def _is_non_null(matcher):
-    return _type_matcher(GraphQLNonNull, has_properties(of_type=matcher))
-
-
-def _is_list_type(matcher):
-    return _type_matcher(GraphQLList, has_properties(of_type=matcher))
-
-
-def _is_object_type(fields):
-    return _type_matcher(GraphQLObjectType, has_properties(
-        fields=fields,
-    ))
-
-
-def _is_field(type=None, args=None):
-    properties = {}
-    if type is not None:
-        properties["type"] = type
-    if args is not None:
-        properties["args"] = args
-
-    return _type_matcher(GraphQLField, has_properties(**properties))
-
-
-def _is_arg(type):
-    return _type_matcher(GraphQLArgument, has_properties(
-        type=type,
-    ))
-
-
-def _is_input_object_type(fields):
-    return _type_matcher(GraphQLInputObjectType, has_properties(
-        fields=fields,
-    ))
-
-
-def _is_input_field(type):
-    return _type_matcher(GraphQLInputObjectField, has_properties(
-        type=type,
-    ))
-
-def _is_schema(query):
-    return _type_matcher(GraphQLSchema, has_properties(_query=query))
-
-
-def _type_matcher(type_, matcher):
-    return all_of(
-        instance_of(type_),
-        matcher,
-    )

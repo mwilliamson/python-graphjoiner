@@ -2,7 +2,7 @@ import abc
 from itertools import groupby
 
 from attr import assoc
-from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLObjectType, GraphQLList, GraphQLSchema
+from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLNonNull, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
 from graphql.execution.values import get_variable_values
 from graphql.language import ast as ast_types
@@ -19,10 +19,10 @@ def executor(root, mutation=None):
     if mutation is None:
         mutation_type = None
     else:
-        mutation_type = mutation.to_graphql_type()
+        mutation_type = _nullable(mutation.to_graphql_type())
 
     default_schema = GraphQLSchema(
-        query=root.to_graphql_type(),
+        query=_nullable(root.to_graphql_type()),
         mutation=mutation_type,
     )
 
@@ -246,7 +246,7 @@ def single(target, build_query, **kwargs):
         target=target,
         build_query=build_query,
         process_results=_one_or_none,
-        wrap_type=lambda graphql_type: graphql_type,
+        wrap_type=lambda graphql_type: _nullable(graphql_type),
         **kwargs
     )
 
@@ -265,7 +265,7 @@ def first_or_none(target, build_query, **kwargs):
         target=target,
         build_query=build_query,
         process_results=_first_or_none,
-        wrap_type=lambda graphql_type: graphql_type,
+        wrap_type=lambda graphql_type: _nullable(graphql_type),
         **kwargs
     )
 
@@ -396,8 +396,15 @@ class JoinType(Value):
                 interfaces=self._interfaces,
             )
 
-        return self._graphql_type
+        return GraphQLNonNull(self._graphql_type)
 
 
 def RootJoinType(**kwargs):
     return JoinType(fetch_immediates=lambda *_: [()], **kwargs)
+
+
+def _nullable(graphql_type):
+    if isinstance(graphql_type, GraphQLNonNull):
+        return graphql_type.of_type
+    else:
+        return graphql_type
