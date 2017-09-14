@@ -80,6 +80,8 @@ def test_many_uses_type_of_target(target_type, type_matcher):
         }),
     )))
 
+# TODO: extract should combine nullability of parent and child
+
 
 class Target(object):
     def __init__(self, type):
