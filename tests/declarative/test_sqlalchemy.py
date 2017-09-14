@@ -1,5 +1,5 @@
 import graphql
-from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries, has_string, starts_with
+from hamcrest import all_of, assert_that, contains_inanyorder, equal_to, has_entries, has_properties, has_string, instance_of, starts_with
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine, Column, ForeignKey, Integer, literal, String, Unicode
@@ -408,7 +408,10 @@ def test_type_of_field_is_determined_from_type_of_column():
         __model__ = AuthorRecord
         id = column_field(AuthorRecord.c_id)
 
-    assert_that(Author.id.type, equal_to(graphql.GraphQLInt))
+    assert_that(Author.id.type, all_of(
+        instance_of(graphql.GraphQLNonNull),
+        has_properties(of_type=equal_to(graphql.GraphQLInt))
+    ))
 
 
 def test_type_of_field_can_be_explicitly_set():
@@ -426,14 +429,18 @@ def test_type_of_field_can_be_explicitly_set():
 
 
 @pytest.mark.parametrize("column, graphql_type", [
-    (sqlalchemy.Column(sqlalchemy.Integer()), graphql.GraphQLInt),
-    (sqlalchemy.Column(sqlalchemy.Float()), graphql.GraphQLFloat),
-    (sqlalchemy.Column(sqlalchemy.String()), graphql.GraphQLString),
-    (sqlalchemy.Column(sqlalchemy.Unicode()), graphql.GraphQLString),
-    (sqlalchemy.Column(sqlalchemy.Boolean()), graphql.GraphQLBoolean),
+    (sqlalchemy.Column(sqlalchemy.Integer()), equal_to(graphql.GraphQLInt)),
+    (sqlalchemy.Column(sqlalchemy.Float()), equal_to(graphql.GraphQLFloat)),
+    (sqlalchemy.Column(sqlalchemy.String()), equal_to(graphql.GraphQLString)),
+    (sqlalchemy.Column(sqlalchemy.Unicode()), equal_to(graphql.GraphQLString)),
+    (sqlalchemy.Column(sqlalchemy.Boolean()), equal_to(graphql.GraphQLBoolean)),
+    (
+        sqlalchemy.Column(sqlalchemy.Integer(), nullable=False),
+        all_of(instance_of(graphql.GraphQLNonNull), has_properties(of_type=equal_to(graphql.GraphQLInt))),
+    ),
 ])
 def test_type_mappings(column, graphql_type):
-    assert_that(_sql_column_to_graphql_type(column), equal_to(graphql_type))
+    assert_that(_sql_column_to_graphql_type(column), graphql_type)
 
 
 class QueryContext(object):
