@@ -13,7 +13,7 @@ from graphjoiner.declarative.sqlalchemy import (
     column_field,
     sql_join,
     _find_join_candidates,
-    _sql_type_to_graphql_type,
+    _sql_column_to_graphql_type,
 )
 from ..matchers import is_invalid_result, is_successful_result
 
@@ -425,15 +425,15 @@ def test_type_of_field_can_be_explicitly_set():
     assert_that(Author.id.type, equal_to(graphql.GraphQLString))
 
 
-@pytest.mark.parametrize("sql_type, graphql_type", [
-    (sqlalchemy.Integer(), graphql.GraphQLInt),
-    (sqlalchemy.Float(), graphql.GraphQLFloat),
-    (sqlalchemy.String(), graphql.GraphQLString),
-    (sqlalchemy.Unicode(), graphql.GraphQLString),
-    (sqlalchemy.Boolean(), graphql.GraphQLBoolean),
+@pytest.mark.parametrize("column, graphql_type", [
+    (sqlalchemy.Column(sqlalchemy.Integer()), graphql.GraphQLInt),
+    (sqlalchemy.Column(sqlalchemy.Float()), graphql.GraphQLFloat),
+    (sqlalchemy.Column(sqlalchemy.String()), graphql.GraphQLString),
+    (sqlalchemy.Column(sqlalchemy.Unicode()), graphql.GraphQLString),
+    (sqlalchemy.Column(sqlalchemy.Boolean()), graphql.GraphQLBoolean),
 ])
-def test_type_mappings(sql_type, graphql_type):
-    assert_that(_sql_type_to_graphql_type(sql_type), equal_to(graphql_type))
+def test_type_mappings(column, graphql_type):
+    assert_that(_sql_column_to_graphql_type(column), equal_to(graphql_type))
 
 
 class QueryContext(object):

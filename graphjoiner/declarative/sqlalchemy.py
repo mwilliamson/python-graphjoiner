@@ -52,7 +52,7 @@ class SqlAlchemyObjectType(ObjectType):
 
 def column_field(column, type=None, internal=False):
     if type is None:
-        type = _sql_type_to_graphql_type(column.type)
+        type = _sql_column_to_graphql_type(column)
     return field(
         column=column,
         type=type,
@@ -156,7 +156,8 @@ _type_mappings = [
     (sqlalchemy.Boolean, graphql.GraphQLBoolean),
 ]
 
-def _sql_type_to_graphql_type(sql_type):
+def _sql_column_to_graphql_type(column):
+    sql_type = column.type
     for mapped_sql_type, graphql_type in _type_mappings:
         if isinstance(sql_type, mapped_sql_type):
             return graphql_type
