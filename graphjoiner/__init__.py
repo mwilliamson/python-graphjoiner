@@ -282,7 +282,7 @@ def many(target, build_query, **kwargs):
         target=target,
         build_query=build_query,
         process_results=lambda x: x,
-        wrap_type=lambda graphql_type: GraphQLList(graphql_type),
+        wrap_type=lambda graphql_type: GraphQLNonNull(GraphQLList(graphql_type)),
         **kwargs
     )
 

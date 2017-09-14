@@ -76,7 +76,7 @@ def test_many_uses_type_of_target(target_type, type_matcher):
     graphql_type.of_type.fields
     assert_that(graphql_type, is_non_null(is_object_type(
         fields=has_entries({
-            "value": is_field(type=is_list_type(type_matcher)),
+            "value": is_field(type=is_non_null(is_list_type(type_matcher))),
         }),
     )))
 
