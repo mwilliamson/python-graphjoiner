@@ -40,7 +40,7 @@ class ObjectTypeMeta(type):
         if attrs.get("__abstract__"):
             return cls
 
-        fields = _declare_fields(cls)
+        _, fields = _declare_fields(cls)
 
         name = attrs.get("__name__")
         if name is not None:
@@ -92,7 +92,10 @@ def _declare_fields(cls):
         field_definition.field_name = _snake_case_to_camel_case(key)
         field_definition._owner = cls
 
-    return fields
+    return [
+        field_definition
+        for _, field_definition in field_definitions
+    ], fields
 
 
 def _declare_interfaces(attrs):
@@ -361,10 +364,10 @@ class InterfaceTypeMeta(type):
             return cls
 
         def fields():
-            fields = _declare_fields(cls)()
+            _, fields = _declare_fields(cls)
             return dict(
                 (key, field.to_graphql_field())
-                for key, field in six.iteritems(fields)
+                for key, field in six.iteritems(fields())
             )
 
         cls.__graphql__ = GraphQLInterfaceType(
@@ -390,9 +393,9 @@ class InputObjectTypeMeta(type):
         if attrs.get("__abstract__"):
             return cls
 
-        field_definitions = get_field_definitions(cls)
-        fields = lazy(_declare_fields(cls))
-        cls.__fields__ = staticmethod(lambda: list(fields().values()))
+        field_definitions, fields = _declare_fields(cls)
+        fields = lazy(fields)
+        cls.__fields__ = staticmethod(lambda: list(field_definitions))
 
 
         cls.__graphql__ = GraphQLInputObjectType(
@@ -432,7 +435,7 @@ class InputObjectTypeMeta(type):
                 raw_=value,
                 **dict(
                     (field_definition.attr_name, get_value(field_definition))
-                    for _, field_definition in field_definitions
+                    for field_definition in field_definitions
                     if field_definition.field_name in value
                 )
             )
