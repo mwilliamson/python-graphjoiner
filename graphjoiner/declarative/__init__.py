@@ -503,14 +503,14 @@ class NonNull(InputType):
 
 class List(InputType):
     def __init__(self, of_type):
-        self._of_type = of_type
+        self.of_type = of_type
 
     def __read__(self, value):
         if value is None or value is undefined:
             return value
         else:
-            return [_read_input_value(self._of_type, element) for element in value]
+            return [_read_input_value(self.of_type, element) for element in value]
 
     @property
     def __graphql__(self):
-        return GraphQLList(_to_graphql_core_type(self._of_type))
+        return GraphQLList(_to_graphql_core_type(self.of_type))
