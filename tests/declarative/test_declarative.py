@@ -7,6 +7,7 @@ from graphjoiner.declarative import (
     executor,
     extract,
     field,
+    fields,
     field_set,
     first_or_none,
     InputObjectType,
@@ -984,3 +985,14 @@ def test_variables_are_validated_against_whitelist():
     assert_that(result, is_invalid_result(errors=contains_inanyorder(
         has_string(equal_to('Variable "$selection" got invalid value {"name": "PG Wodehouse"}.\nIn field "name": Unknown field.')),
     )))
+
+
+def test_can_read_fields_of_input_object_types():
+    class UserInput(InputObjectType):
+        username = field(type=GraphQLString)
+        email_address = field(type=GraphQLString)
+
+    assert_that(fields(UserInput), contains_inanyorder(
+        has_properties(attr_name="username", field_name="username"),
+        has_properties(attr_name="email_address", field_name="emailAddress"),
+    ))

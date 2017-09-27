@@ -380,6 +380,10 @@ class InterfaceType(six.with_metaclass(InterfaceTypeMeta, Type)):
     __abstract__ = True
 
 
+def fields(cls):
+    return cls.__fields__()
+
+
 class InputObjectTypeMeta(type):
     def __new__(meta, name, bases, attrs):
         cls = super(InputObjectTypeMeta, meta).__new__(meta, name, bases, attrs)
@@ -388,6 +392,8 @@ class InputObjectTypeMeta(type):
 
         field_definitions = get_field_definitions(cls)
         fields = lazy(_declare_fields(cls))
+        cls.__fields__ = staticmethod(lambda: list(fields().values()))
+
 
         cls.__graphql__ = GraphQLInputObjectType(
             name=cls.__name__,
