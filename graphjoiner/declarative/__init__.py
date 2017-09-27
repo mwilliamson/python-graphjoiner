@@ -494,14 +494,14 @@ undefined = _Undefined()
 
 class NonNull(InputType):
     def __init__(self, of_type):
-        self._of_type = of_type
+        self.of_type = of_type
 
     def __read__(self, value):
-        return _read_input_value(self._of_type, value)
+        return _read_input_value(self.of_type, value)
 
     @property
     def __graphql__(self):
-        return GraphQLNonNull(_to_graphql_core_type(self._of_type))
+        return GraphQLNonNull(_to_graphql_core_type(self.of_type))
 
 
 class List(InputType):
