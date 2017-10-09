@@ -126,8 +126,8 @@ def _find_join_candidates_directional(local, remote):
     remote_tables = sqlalchemy.inspect(remote.__model__).tables
 
     for field_definition in _get_simple_field_definitions(local):
-        orm_column = field_definition._kwargs["column"]
-        if hasattr(orm_column, "property"):
+        orm_column = field_definition._kwargs.get("column")
+        if orm_column is not None and hasattr(orm_column, "property"):
             columns = orm_column.property.columns
             if len(columns) == 1:
                 column, = columns
