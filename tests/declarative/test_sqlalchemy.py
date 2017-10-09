@@ -18,6 +18,64 @@ from graphjoiner.declarative.sqlalchemy import (
 from ..matchers import is_invalid_result, is_successful_result
 
 
+def test_when_join_condition_is_unambiguous_then_join_condition_is_inferred():
+    Base = declarative_base()
+
+    class AuthorRecord(Base):
+        __tablename__ = "author"
+
+        c_id = Column(Integer, primary_key=True)
+        c_name = Column(Unicode, nullable=False)
+
+    class BookRecord(Base):
+        __tablename__ = "book"
+
+        c_id = Column(Integer, primary_key=True)
+        c_title = Column(Unicode, nullable=False)
+        c_author_id = Column(Integer, ForeignKey(AuthorRecord.c_id))
+
+    class Author(SqlAlchemyObjectType):
+        __model__ = AuthorRecord
+
+        id = column_field(AuthorRecord.c_id)
+        name = column_field(AuthorRecord.c_name)
+        books = many(lambda: sql_join(Book))
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+
+        id = column_field(BookRecord.c_id)
+        title = column_field(BookRecord.c_title)
+        author_id = column_field(BookRecord.c_author_id)
+
+    class Root(RootType):
+        authors = many(lambda: select(Author))
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    session = Session(engine)
+    session.add(AuthorRecord(c_name="PG Wodehouse"))
+    session.add(AuthorRecord(c_name="Joseph Heller"))
+    session.add(BookRecord(c_title="Leave It to Psmith", c_author_id=1))
+    session.add(BookRecord(c_title="Catch-22", c_author_id=2))
+    session.commit()
+
+    result = executor(Root)("""{
+        authors {
+            name
+            books { title }
+        }
+    }""", context=QueryContext(session=session))
+    assert_that(result, is_successful_result(data={
+        "authors": [
+            {"name": "PG Wodehouse", "books": [{"title": "Leave It to Psmith"}]},
+            {"name": "Joseph Heller", "books": [{"title": "Catch-22"}]},
+        ],
+    }))
+
+
 def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_objects():
     Base = declarative_base()
 
