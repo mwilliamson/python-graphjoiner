@@ -640,3 +640,35 @@ class TestFindJoinCandidates(object):
             list(_find_join_candidates(Author, Book)),
             equal_to([(Author.__dict__["id"], Book.__dict__["author_id"])]),
         )
+
+
+    def test_fields_without_column_are_ignored_when_scanning_for_field_for_column(self):
+        Base = declarative_base()
+
+        class AuthorRecord(Base):
+            __tablename__ = "author"
+
+            c_id = Column(Integer, primary_key=True)
+
+        class BookRecord(Base):
+            __tablename__ = "book"
+
+            c_id = Column(Integer, primary_key=True)
+            c_author_id = Column(Integer, ForeignKey(AuthorRecord.c_id))
+
+        class Author(SqlAlchemyObjectType):
+            __model__ = AuthorRecord
+
+            id = column_field(AuthorRecord.c_id)
+            name = field(type=graphql.GraphQLString)
+
+        class Book(SqlAlchemyObjectType):
+            __model__ = BookRecord
+
+            id = column_field(BookRecord.c_id)
+            author_id = column_field(BookRecord.c_author_id)
+
+        assert_that(
+            list(_find_join_candidates(Author, Book)),
+            equal_to([(Author.__dict__["id"], Book.__dict__["author_id"])]),
+        )

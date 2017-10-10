@@ -138,10 +138,16 @@ def _find_join_candidates_directional(local, remote):
 
 
 def _find_field_for_column(cls, column):
-    for field_definition in _get_simple_field_definitions(cls):
-        if field_definition._kwargs["column"] == column:
-            return field_definition
-    raise Exception("Could not find field in {} for {}".format(cls.__name__, column))
+    fields = [
+        field_definition
+        for field_definition in _get_simple_field_definitions(cls)
+        if "column" in field_definition._kwargs and field_definition._kwargs["column"] == column
+    ]
+
+    if len(fields) == 1:
+        return fields[0]
+    else:
+        raise Exception("Could not find unique field in {} for {}".format(cls.__name__, column))
 
 def _get_simple_field_definitions(cls):
     for field_key, field_definition in get_field_definitions(cls):
