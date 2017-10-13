@@ -75,7 +75,7 @@ def sql_value_join(local, target, join):
         for local_field, remote_field in six.iteritems(join)
     )
 
-    return build_query, join_fields
+    return target, build_query, join_fields
 
 
 @join_builder
@@ -102,7 +102,7 @@ def sql_join(local, target, join=None):
                 for parent_column, remote_field in zip(parents.c.values(), join.values())
             ))
 
-    return build_query, dict(
+    return target, build_query, dict(
         (local_field.field_name, remote_field.field_name)
         for local_field, remote_field in join.items()
     )

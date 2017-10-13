@@ -176,13 +176,12 @@ def _to_graphql_core_type(type_):
 
 
 def join_builder(build_join):
-    def wrapped(target, *args, **kwargs):
+    def wrapped(*args, **kwargs):
         filter = kwargs.pop("filter", None)
         return lambda func: RelationshipDefinition(
             func=func,
-            target=target,
             filter=filter,
-            build_join=lambda local: build_join(local, target, *args, **kwargs),
+            build_join=lambda local: build_join(local, *args, **kwargs),
         )
 
     wrapped.build = build_join
@@ -211,15 +210,14 @@ many = partial(relationship, relationship_type=graphjoiner.many)
 
 
 class RelationshipDefinition(FieldDefinition):
-    def __init__(self, func, target, filter, build_join):
+    def __init__(self, func, filter, build_join):
         self._func = func
-        self._target = target
         self._filter = filter
         self._build_join = build_join
         self._args = []
 
     def instantiate(self):
-        build_query, join = self._build_join(self._owner)
+        self._target, build_query, join = self._build_join(self._owner)
 
         def build_query_with_args(args, parent_query, context):
             query = build_query(parent_query, context)
@@ -365,7 +363,7 @@ def join(local, target, query, join_fields):
     def build_query(parent_query, context):
         return query(parent_query)
 
-    return build_query, join_fields
+    return target, build_query, join_fields
 
 
 class InterfaceTypeMeta(type):
