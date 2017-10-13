@@ -185,6 +185,8 @@ def join_builder(build_join):
             build_join=lambda local: build_join(local, target, *args, **kwargs),
         )
 
+    wrapped.build = build_join
+
     return wrapped
 
 
@@ -339,6 +341,19 @@ def _snake_case_to_camel_case(value):
 
 @join_builder
 def select(local, target, join_query=None, join_fields=None):
+
+    def build_query(parent_query):
+        target_query = target.__select_all__()
+        if join_query is None:
+            return target_query
+        else:
+            return join_query(parent_query, target_query)
+
+    return join.build(local, target, query=build_query, join_fields=join_fields)
+
+
+@join_builder
+def join(local, target, query, join_fields):
     if join_fields is None:
         join_fields = {}
     else:
@@ -348,11 +363,7 @@ def select(local, target, join_query=None, join_fields=None):
         )
 
     def build_query(parent_query, context):
-        target_query = target.__select_all__()
-        if join_query is None:
-            return target_query
-        else:
-            return join_query(parent_query, target_query)
+        return query(parent_query)
 
     return build_query, join_fields
 

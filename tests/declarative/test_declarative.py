@@ -11,13 +11,14 @@ from graphjoiner.declarative import (
     field_set,
     first_or_none,
     InputObjectType,
+    join as _join,
+    join_builder,
     single,
     List,
     many,
     RootType,
     NonNull,
     ObjectType,
-    join_builder,
     InterfaceType,
     select,
     undefined,
@@ -33,18 +34,12 @@ class StaticDataObjectType(ObjectType):
     @staticmethod
     @join_builder
     def select(local, target, join=None):
-        if join is None:
-            join_fields = {}
-        else:
-            join_fields = dict(
-                (local_field.field_name, remote_field.field_name)
-                for local_field, remote_field in join.items()
-            )
-
-        def generate_select(parent_select, context):
-            return target.__records__
-
-        return generate_select, join_fields
+        return _join.build(
+            local,
+            target,
+            query=lambda parent_select: target.__records__,
+            join_fields=join,
+        )
 
     @classmethod
     def __fetch_immediates__(cls, selections, records, context):
