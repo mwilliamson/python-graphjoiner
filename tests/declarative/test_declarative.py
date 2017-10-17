@@ -53,6 +53,23 @@ class StaticDataObjectType(ObjectType):
         ]
 
 
+def test_single_relationship_raises_error_if_there_are_no_matching_results():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = []
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("{ author { name } }")
+    assert_that(result, is_invalid_result(errors=contains_inanyorder(
+        has_string("Expected 1 value but got 0"),
+    )))
+
+
 def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result():
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
@@ -68,6 +85,23 @@ def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_match
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
+
+
+def test_single_relationship_raises_error_if_there_are_multiple_matching_results():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("{ author { name } }")
+    assert_that(result, is_invalid_result(errors=contains_inanyorder(
+        has_string("Expected 1 value but got 2"),
+    )))
 
 
 def test_single_or_null_relationship_is_resolved_to_null_if_there_are_no_matching_results():
@@ -100,6 +134,23 @@ def test_single_or_null_relationship_is_resolved_to_object_if_there_is_exactly_o
     assert_that(result, is_successful_result(data={
         "author": {"name": "PG Wodehouse"},
     }))
+
+
+def test_single_or_null_relationship_raises_error_if_there_are_multiple_matching_results():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single_or_null(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("{ author { name } }")
+    assert_that(result, is_invalid_result(errors=contains_inanyorder(
+        has_string("Expected up to 1 value but got 2"),
+    )))
 
 
 def test_first_or_none_relationship_is_resolved_to_null_if_there_are_no_matching_results():

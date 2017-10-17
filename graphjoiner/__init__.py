@@ -255,7 +255,7 @@ def _single(values):
     if len(values) == 1:
         return values[0]
     else:
-        raise Exception("TODO")
+        raise GraphQLError("Expected 1 value but got {}".format(len(values)))
 
 
 def single_or_null(target, build_query, **kwargs):
@@ -272,7 +272,7 @@ def _single_or_none(values):
     if len(values) == 0:
         return None
     elif len(values) > 1:
-        raise Exception("TODO")
+        raise GraphQLError("Expected up to 1 value but got {}".format(len(values)))
     else:
         return values[0]
 
