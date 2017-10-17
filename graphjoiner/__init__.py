@@ -277,7 +277,7 @@ def _single_or_none(values):
         return values[0]
 
 
-def first_or_none(target, build_query, **kwargs):
+def first_or_null(target, build_query, **kwargs):
     return relationship(
         target=target,
         build_query=build_query,

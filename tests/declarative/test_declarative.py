@@ -9,7 +9,7 @@ from graphjoiner.declarative import (
     field,
     fields,
     field_set,
-    first_or_none,
+    first_or_null,
     InputObjectType,
     join as _join,
     join_builder,
@@ -113,9 +113,9 @@ class TestRelationships(object):
         )))
 
 
-    def test_first_or_none_relationship_is_resolved_to_null_if_there_are_no_matching_results(self):
+    def test_first_or_null_relationship_is_resolved_to_null_if_there_are_no_matching_results(self):
         class Root(RootType):
-            author = first_or_none(lambda: self._join_to_authors(count=0))
+            author = first_or_null(lambda: self._join_to_authors(count=0))
 
         result = executor(Root)("{ author { name } }")
         assert_that(result, is_successful_result(data={
@@ -123,9 +123,9 @@ class TestRelationships(object):
         }))
 
 
-    def test_first_or_none_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result(self):
+    def test_first_or_null_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result(self):
         class Root(RootType):
-            author = first_or_none(lambda: self._join_to_authors(count=1))
+            author = first_or_null(lambda: self._join_to_authors(count=1))
 
         result = executor(Root)("{ author { name } }")
         assert_that(result, is_successful_result(data={
@@ -133,9 +133,9 @@ class TestRelationships(object):
         }))
 
 
-    def test_first_or_none_relationship_is_resolved_to_first_object_if_there_is_more_than_one_matching_result(self):
+    def test_first_or_null_relationship_is_resolved_to_first_object_if_there_is_more_than_one_matching_result(self):
         class Root(RootType):
-            author = first_or_none(lambda: self._join_to_authors(count=2))
+            author = first_or_null(lambda: self._join_to_authors(count=2))
 
         result = executor(Root)("{ author { name } }")
         assert_that(result, is_successful_result(data={

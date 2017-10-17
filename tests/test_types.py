@@ -1,4 +1,4 @@
-from graphjoiner import field, first_or_none, JoinType, many, single, single_or_null
+from graphjoiner import field, first_or_null, JoinType, many, single, single_or_null
 from graphql import GraphQLInt, GraphQLNonNull
 from hamcrest import assert_that, has_entries
 import pytest
@@ -65,10 +65,10 @@ def test_single_or_null_produces_nullable_types(target_type, type_matcher):
     (GraphQLInt, is_int),
     (GraphQLNonNull(GraphQLInt), is_int),
 ])
-def test_first_or_none_produces_nullable_types(target_type, type_matcher):
+def test_first_or_null_produces_nullable_types(target_type, type_matcher):
     root_type = JoinType(
         name="Root",
-        fields=lambda: {"value": first_or_none(Target(target_type), None)},
+        fields=lambda: {"value": first_or_null(Target(target_type), None)},
         fetch_immediates=None,
     )
 
