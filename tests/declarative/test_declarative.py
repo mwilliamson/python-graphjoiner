@@ -52,154 +52,154 @@ class StaticDataObjectType(ObjectType):
             for record in records
         ]
 
+class TestRelationships(object):
+    def test_single_relationship_raises_error_if_there_are_no_matching_results(self):
+        AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
-def test_single_relationship_raises_error_if_there_are_no_matching_results():
-    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+        class Author(StaticDataObjectType):
+            __records__ = []
 
-    class Author(StaticDataObjectType):
-        __records__ = []
+            name = field(type=GraphQLString)
 
-        name = field(type=GraphQLString)
+        class Root(RootType):
+            author = single(lambda: StaticDataObjectType.select(Author))
 
-    class Root(RootType):
-        author = single(lambda: StaticDataObjectType.select(Author))
-
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_invalid_result(errors=contains_inanyorder(
-        has_string("Expected 1 value but got 0"),
-    )))
-
-
-def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result():
-    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
-
-    class Author(StaticDataObjectType):
-        __records__ = [AuthorRecord("PG Wodehouse")]
-
-        name = field(type=GraphQLString)
-
-    class Root(RootType):
-        author = single(lambda: StaticDataObjectType.select(Author))
-
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_successful_result(data={
-        "author": {"name": "PG Wodehouse"},
-    }))
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_invalid_result(errors=contains_inanyorder(
+            has_string("Expected 1 value but got 0"),
+        )))
 
 
-def test_single_relationship_raises_error_if_there_are_multiple_matching_results():
-    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+    def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result(self):
+        AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
-    class Author(StaticDataObjectType):
-        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+        class Author(StaticDataObjectType):
+            __records__ = [AuthorRecord("PG Wodehouse")]
 
-        name = field(type=GraphQLString)
+            name = field(type=GraphQLString)
 
-    class Root(RootType):
-        author = single(lambda: StaticDataObjectType.select(Author))
+        class Root(RootType):
+            author = single(lambda: StaticDataObjectType.select(Author))
 
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_invalid_result(errors=contains_inanyorder(
-        has_string("Expected 1 value but got 2"),
-    )))
-
-
-def test_single_or_null_relationship_is_resolved_to_null_if_there_are_no_matching_results():
-    class Author(StaticDataObjectType):
-        __records__ = []
-
-        name = field(type=GraphQLString)
-
-    class Root(RootType):
-        author = single_or_null(lambda: StaticDataObjectType.select(Author))
-
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_successful_result(data={
-        "author": None,
-    }))
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_successful_result(data={
+            "author": {"name": "PG Wodehouse"},
+        }))
 
 
-def test_single_or_null_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result():
-    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+    def test_single_relationship_raises_error_if_there_are_multiple_matching_results(self):
+        AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
-    class Author(StaticDataObjectType):
-        __records__ = [AuthorRecord("PG Wodehouse")]
+        class Author(StaticDataObjectType):
+            __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
 
-        name = field(type=GraphQLString)
+            name = field(type=GraphQLString)
 
-    class Root(RootType):
-        author = single_or_null(lambda: StaticDataObjectType.select(Author))
+        class Root(RootType):
+            author = single(lambda: StaticDataObjectType.select(Author))
 
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_successful_result(data={
-        "author": {"name": "PG Wodehouse"},
-    }))
-
-
-def test_single_or_null_relationship_raises_error_if_there_are_multiple_matching_results():
-    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
-
-    class Author(StaticDataObjectType):
-        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
-
-        name = field(type=GraphQLString)
-
-    class Root(RootType):
-        author = single_or_null(lambda: StaticDataObjectType.select(Author))
-
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_invalid_result(errors=contains_inanyorder(
-        has_string("Expected up to 1 value but got 2"),
-    )))
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_invalid_result(errors=contains_inanyorder(
+            has_string("Expected 1 value but got 2"),
+        )))
 
 
-def test_first_or_none_relationship_is_resolved_to_null_if_there_are_no_matching_results():
-    class Author(StaticDataObjectType):
-        __records__ = []
+    def test_single_or_null_relationship_is_resolved_to_null_if_there_are_no_matching_results(self):
+        class Author(StaticDataObjectType):
+            __records__ = []
 
-        name = field(type=GraphQLString)
+            name = field(type=GraphQLString)
 
-    class Root(RootType):
-        author = first_or_none(lambda: StaticDataObjectType.select(Author))
+        class Root(RootType):
+            author = single_or_null(lambda: StaticDataObjectType.select(Author))
 
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_successful_result(data={
-        "author": None,
-    }))
-
-
-def test_first_or_none_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result():
-    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
-
-    class Author(StaticDataObjectType):
-        __records__ = [AuthorRecord("PG Wodehouse")]
-
-        name = field(type=GraphQLString)
-
-    class Root(RootType):
-        author = first_or_none(lambda: StaticDataObjectType.select(Author))
-
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_successful_result(data={
-        "author": {"name": "PG Wodehouse"},
-    }))
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_successful_result(data={
+            "author": None,
+        }))
 
 
-def test_first_or_none_relationship_is_resolved_to_first_object_if_there_is_more_than_one_matching_result():
-    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+    def test_single_or_null_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result(self):
+        AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
-    class Author(StaticDataObjectType):
-        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+        class Author(StaticDataObjectType):
+            __records__ = [AuthorRecord("PG Wodehouse")]
 
-        name = field(type=GraphQLString)
+            name = field(type=GraphQLString)
 
-    class Root(RootType):
-        author = first_or_none(lambda: StaticDataObjectType.select(Author))
+        class Root(RootType):
+            author = single_or_null(lambda: StaticDataObjectType.select(Author))
 
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_successful_result(data={
-        "author": {"name": "PG Wodehouse"},
-    }))
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_successful_result(data={
+            "author": {"name": "PG Wodehouse"},
+        }))
+
+
+    def test_single_or_null_relationship_raises_error_if_there_are_multiple_matching_results(self):
+        AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+        class Author(StaticDataObjectType):
+            __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+
+            name = field(type=GraphQLString)
+
+        class Root(RootType):
+            author = single_or_null(lambda: StaticDataObjectType.select(Author))
+
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_invalid_result(errors=contains_inanyorder(
+            has_string("Expected up to 1 value but got 2"),
+        )))
+
+
+    def test_first_or_none_relationship_is_resolved_to_null_if_there_are_no_matching_results(self):
+        class Author(StaticDataObjectType):
+            __records__ = []
+
+            name = field(type=GraphQLString)
+
+        class Root(RootType):
+            author = first_or_none(lambda: StaticDataObjectType.select(Author))
+
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_successful_result(data={
+            "author": None,
+        }))
+
+
+    def test_first_or_none_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result(self):
+        AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+        class Author(StaticDataObjectType):
+            __records__ = [AuthorRecord("PG Wodehouse")]
+
+            name = field(type=GraphQLString)
+
+        class Root(RootType):
+            author = first_or_none(lambda: StaticDataObjectType.select(Author))
+
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_successful_result(data={
+            "author": {"name": "PG Wodehouse"},
+        }))
+
+
+    def test_first_or_none_relationship_is_resolved_to_first_object_if_there_is_more_than_one_matching_result(self):
+        AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+        class Author(StaticDataObjectType):
+            __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+
+            name = field(type=GraphQLString)
+
+        class Root(RootType):
+            author = first_or_none(lambda: StaticDataObjectType.select(Author))
+
+        result = executor(Root)("{ author { name } }")
+        assert_that(result, is_successful_result(data={
+            "author": {"name": "PG Wodehouse"},
+        }))
 
 
 def test_relationships_can_take_filter_argument_to_refine_select():
