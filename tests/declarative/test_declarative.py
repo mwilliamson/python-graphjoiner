@@ -14,6 +14,7 @@ from graphjoiner.declarative import (
     join as _join,
     join_builder,
     single,
+    single_or_null,
     List,
     many,
     RootType,
@@ -51,20 +52,6 @@ class StaticDataObjectType(ObjectType):
             for record in records
         ]
 
-def test_single_relationship_is_resolved_to_null_if_there_are_no_matching_results():
-    class Author(StaticDataObjectType):
-        __records__ = []
-
-        name = field(type=GraphQLString)
-
-    class Root(RootType):
-        author = single(lambda: StaticDataObjectType.select(Author))
-
-    result = executor(Root)("{ author { name } }")
-    assert_that(result, is_successful_result(data={
-        "author": None,
-    }))
-
 
 def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result():
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
@@ -76,6 +63,38 @@ def test_single_relationship_is_resolved_to_object_if_there_is_exactly_one_match
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("{ author { name } }")
+    assert_that(result, is_successful_result(data={
+        "author": {"name": "PG Wodehouse"},
+    }))
+
+
+def test_single_or_null_relationship_is_resolved_to_null_if_there_are_no_matching_results():
+    class Author(StaticDataObjectType):
+        __records__ = []
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single_or_null(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("{ author { name } }")
+    assert_that(result, is_successful_result(data={
+        "author": None,
+    }))
+
+
+def test_single_or_null_relationship_is_resolved_to_object_if_there_is_exactly_one_matching_result():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse")]
+
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        author = single_or_null(lambda: StaticDataObjectType.select(Author))
 
     result = executor(Root)("{ author { name } }")
     assert_that(result, is_successful_result(data={
@@ -815,7 +834,7 @@ def test_query_can_be_executed_with_subschema():
         name = field(type=GraphQLString)
 
     class Root(RootType):
-        author = single(lambda: StaticDataObjectType.select(Author))
+        author = single_or_null(lambda: StaticDataObjectType.select(Author))
 
     id_query = "{ author { id } }"
     name_query = "{ author { name } }"

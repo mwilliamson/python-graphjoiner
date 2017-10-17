@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from graphjoiner.declarative import executor, extract, field, RootType, ObjectType, single, many, select
+from graphjoiner.declarative import executor, extract, field, RootType, ObjectType, single, single_or_null, many, select
 from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, sql_join, sql_value_join, column_field
 from .execution_test_cases import ExecutionTestCases
 from .matchers import is_successful_result
@@ -74,13 +74,13 @@ class Sales(ObjectType):
 
 class Root(RootType):
     books = many(lambda: select(Book))
-    book = single(lambda: select(Book))
+    book = single_or_null(lambda: select(Book))
 
     @book.arg("id", GraphQLInt)
     def book_id(query, book_id):
         return query.filter(BookRecord.c_id == book_id)
 
-    author = single(lambda: select(Author))
+    author = single_or_null(lambda: select(Author))
 
     @author.arg("id", GraphQLInt)
     def author_id(query, author_id):

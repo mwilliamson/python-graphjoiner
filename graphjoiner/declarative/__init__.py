@@ -206,6 +206,7 @@ def relationship(select_values, relationship_type, args=None, internal=False):
 
 first_or_none = partial(relationship, relationship_type=graphjoiner.first_or_none)
 single = partial(relationship, relationship_type=graphjoiner.single)
+single_or_null = partial(relationship, relationship_type=graphjoiner.single_or_null)
 many = partial(relationship, relationship_type=graphjoiner.many)
 
 

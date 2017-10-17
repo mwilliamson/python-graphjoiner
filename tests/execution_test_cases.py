@@ -92,7 +92,7 @@ class ExecutionTestCases(object):
         }))
 
 
-    def test_single_entity_is_null_if_not_found(self):
+    def test_single_or_null_entity_is_null_if_not_found(self):
         query = """
             {
                 author(id: 100) {

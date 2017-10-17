@@ -245,13 +245,30 @@ def single(target, build_query, **kwargs):
     return relationship(
         target=target,
         build_query=build_query,
-        process_results=_one_or_none,
+        process_results=_single,
+        wrap_type=lambda graphql_type: graphql_type,
+        **kwargs
+    )
+
+
+def _single(values):
+    if len(values) == 1:
+        return values[0]
+    else:
+        raise Exception("TODO")
+
+
+def single_or_null(target, build_query, **kwargs):
+    return relationship(
+        target=target,
+        build_query=build_query,
+        process_results=_single_or_none,
         wrap_type=lambda graphql_type: _nullable(graphql_type),
         **kwargs
     )
 
 
-def _one_or_none(values):
+def _single_or_none(values):
     if len(values) == 0:
         return None
     elif len(values) > 1:

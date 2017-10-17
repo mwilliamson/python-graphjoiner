@@ -1,4 +1,4 @@
-from graphjoiner import field, first_or_none, JoinType, many, single
+from graphjoiner import field, first_or_none, JoinType, many, single, single_or_null
 from graphql import GraphQLInt, GraphQLNonNull
 from hamcrest import assert_that, has_entries
 import pytest
@@ -23,12 +23,32 @@ def test_join_types_are_not_nullable():
 
 @pytest.mark.parametrize("target_type, type_matcher", [
     (GraphQLInt, is_int),
-    (GraphQLNonNull(GraphQLInt), is_int),
+    (GraphQLNonNull(GraphQLInt), is_non_null(is_int)),
 ])
-def test_single_produces_nullable_types(target_type, type_matcher):
+def test_single_uses_type_of_target(target_type, type_matcher):
     root_type = JoinType(
         name="Root",
         fields=lambda: {"value": single(Target(target_type), None)},
+        fetch_immediates=None,
+    )
+
+    graphql_type = root_type.to_graphql_type()
+    graphql_type.of_type.fields
+    assert_that(graphql_type, is_non_null(is_object_type(
+        fields=has_entries({
+            "value": is_field(type=type_matcher),
+        }),
+    )))
+
+
+@pytest.mark.parametrize("target_type, type_matcher", [
+    (GraphQLInt, is_int),
+    (GraphQLNonNull(GraphQLInt), is_int),
+])
+def test_single_or_null_produces_nullable_types(target_type, type_matcher):
+    root_type = JoinType(
+        name="Root",
+        fields=lambda: {"value": single_or_null(Target(target_type), None)},
         fetch_immediates=None,
     )
 

@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, Unicode, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, Query
 
-from graphjoiner import execute, single, many, extract, JoinType, RootJoinType, field
+from graphjoiner import execute, single, single_or_null, many, extract, JoinType, RootJoinType, field
 from .execution_test_cases import ExecutionTestCases
 
 
@@ -108,8 +108,8 @@ def root():
     def fields():
         return {
             "books": many(book_join_type, lambda *_: Query([]).select_from(Book)),
-            "book": single(book_join_type, book_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
-            "author": single(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
+            "book": single_or_null(book_join_type, book_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
+            "author": single_or_null(author_join_type, author_query, args={"id": GraphQLArgument(type=GraphQLInt)}),
         }
 
     def book_query(args, _, context):
