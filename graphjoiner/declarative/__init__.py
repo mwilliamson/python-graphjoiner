@@ -221,7 +221,7 @@ class RelationshipDefinition(FieldDefinition):
         self._target, build_query, join = self._build_join(self._owner)
 
         def build_query_with_args(args, parent_query, context):
-            query = build_query(parent_query, context)
+            query = build_query(parent_query, context=context)
 
             if self._filter is not None:
                 query = self._filter(query)
@@ -259,7 +259,7 @@ class RelationshipDefinition(FieldDefinition):
         else:
             read_arg_value = lambda x: x
 
-        refine_query = _optional_argument("context", refine_query)
+        refine_query = _optional_argument("context", refine_query, positional_args=2)
 
         def new_refine_query(query, arg_value, *args, **kwargs):
             return refine_query(query, read_arg_value(arg_value), *args, **kwargs)
@@ -267,9 +267,9 @@ class RelationshipDefinition(FieldDefinition):
         self._args.append((arg_name, arg_type, new_refine_query))
 
 
-def _optional_argument(arg_name, func):
+def _optional_argument(arg_name, func, positional_args):
     func_args, _, _, _ = inspect.getargspec(func)
-    extra_func_args = func_args[2:]
+    extra_func_args = func_args[positional_args:]
     if arg_name in extra_func_args:
         return func
     else:
@@ -353,6 +353,8 @@ def select(local, target, join_query=None, join_fields=None):
 
 @join_builder
 def join(local, target, query, join_fields):
+    build_query = _optional_argument("context", query, positional_args=1)
+
     if join_fields is None:
         join_fields = {}
     else:
@@ -360,9 +362,6 @@ def join(local, target, query, join_fields):
             (local_field.field_name, remote_field.field_name)
             for local_field, remote_field in six.iteritems(join_fields)
         )
-
-    def build_query(parent_query, context):
-        return query(parent_query)
 
     return target, build_query, join_fields
 

@@ -178,6 +178,28 @@ def test_relationships_can_take_filter_argument_to_refine_select():
     }))
 
 
+def test_query_builder_can_use_context():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Context(object):
+        authors = [AuthorRecord("PG Wodehouse")]
+
+    class Author(StaticDataObjectType):
+        name = field(type=GraphQLString)
+
+    class Root(RootType):
+        authors = many(lambda: _join(
+            Author,
+            lambda root_query, context: context.authors,
+            join_fields={},
+        ))
+
+    result = executor(Root)("{ authors { name } }", context=Context())
+    assert_that(result, is_successful_result(data={
+        "authors": [{"name": "PG Wodehouse"}],
+    }))
+
+
 def test_can_extract_fields_from_relationships():
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
