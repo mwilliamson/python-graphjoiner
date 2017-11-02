@@ -271,6 +271,10 @@ implement ``__fetch_immediates__`` as a static or class method.
   Should return a list of tuples,
   where each tuple contains the value for each selection in the same order.
 
+Implementing ``__select_all__`` allows the object to be used with ``select()``.
+``__select_all__()`` takes no arguments,
+and should return a query that represents all instances of the object.
+
 For instance,
 to implement a base type for static data:
 
