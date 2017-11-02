@@ -50,7 +50,7 @@ class ObjectTypeMeta(type):
         cls.__graphjoiner__ = graphjoiner.JoinType(
             name=cls.__name__,
             fields=fields,
-            fetch_immediates=cls.__fetch_immediates__,
+            fetch_immediates=getattr(cls, "__fetch_immediates__", None),
             interfaces=lambda: _declare_interfaces(attrs),
         )
         cls.__graphql__ = cls.__graphjoiner__.to_graphql_type()
