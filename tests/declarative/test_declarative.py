@@ -1,9 +1,10 @@
 import attr
-from graphql import GraphQLBoolean, GraphQLField, GraphQLInt, GraphQLInterfaceType, GraphQLNonNull, GraphQLString
+from graphql import GraphQLField, GraphQLInterfaceType, GraphQLNonNull, GraphQLString
 from hamcrest import all_of, assert_that, contains, contains_inanyorder, equal_to, has_properties, has_string, instance_of, starts_with
 import pytest
 
 from graphjoiner.declarative import (
+    Boolean,
     executor,
     extract,
     field,
@@ -11,6 +12,7 @@ from graphjoiner.declarative import (
     field_set,
     first_or_null,
     InputObjectType,
+    Int,
     join as _join,
     join_builder,
     single,
@@ -22,6 +24,7 @@ from graphjoiner.declarative import (
     ObjectType,
     InterfaceType,
     select,
+    String,
     undefined,
     _snake_case_to_camel_case,
 )
@@ -156,7 +159,7 @@ class TestRelationships(object):
         class Author(StaticDataObjectType):
             __records__ = authors[:count]
 
-            name = field(type=GraphQLString)
+            name = field(type=String)
 
         return StaticDataObjectType.select(Author)
 
@@ -167,7 +170,7 @@ def test_relationships_can_take_filter_argument_to_refine_select():
     class Author(StaticDataObjectType):
         __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         authors = many(lambda: StaticDataObjectType.select(Author, filter=lambda values: values[:1]))
@@ -185,7 +188,7 @@ def test_query_builder_can_use_context():
         authors = [AuthorRecord("PG Wodehouse")]
 
     class Author(StaticDataObjectType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         authors = many(lambda: _join(
@@ -206,7 +209,7 @@ def test_can_extract_fields_from_relationships():
     class Author(StaticDataObjectType):
         __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         authors = many(lambda: StaticDataObjectType.select(Author))
@@ -224,7 +227,7 @@ def test_can_extract_fields_from_anonymous_fields():
     class Author(StaticDataObjectType):
         __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author_names = extract(many(lambda: StaticDataObjectType.select(Author)), "name")
@@ -241,7 +244,7 @@ def test_can_extract_fields_from_relationships_using_field():
     class Author(StaticDataObjectType):
         __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         authors = many(lambda: StaticDataObjectType.select(Author))
@@ -265,7 +268,7 @@ def test_can_implement_graphql_core_interfaces():
 
         __records__ = [AuthorRecord("PG Wodehouse")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
@@ -284,7 +287,7 @@ def test_can_implement_graphql_core_interfaces():
 
 def test_can_implement_declarative_interfaces():
     class HasName(InterfaceType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
@@ -293,7 +296,7 @@ def test_can_implement_declarative_interfaces():
 
         __records__ = [AuthorRecord("PG Wodehouse")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
@@ -318,10 +321,10 @@ def test_interfaces_can_be_declared_using_function():
 
         __records__ = [AuthorRecord("PG Wodehouse")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class HasName(InterfaceType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
@@ -340,7 +343,7 @@ def test_interfaces_can_be_declared_using_function():
 
 def test_field_type_can_be_declared_using_declarative_interface_type():
     class Author(InterfaceType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Book(InterfaceType):
         author = field(type=Author)
@@ -350,7 +353,7 @@ def test_field_type_can_be_declared_using_declarative_interface_type():
 
 def test_field_type_can_be_declared_using_declarative_object_type():
     class Author(ObjectType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
         def __fetch_immediates__(cls, selections, query, context):
             pass
@@ -366,7 +369,7 @@ def test_field_type_can_be_declared_using_declarative_type_in_lambda():
         author = field(type=lambda: Author)
 
     class Author(ObjectType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
         def __fetch_immediates__(cls, selections, query, context):
             pass
@@ -384,8 +387,8 @@ def test_internal_fields_cannot_be_queried_directly():
             AuthorRecord("JH", "Joseph Heller"),
         ]
 
-        id = field(type=GraphQLString)
-        name = field(type=GraphQLString)
+        id = field(type=String)
+        name = field(type=String)
 
     class Book(StaticDataObjectType):
         __records__ = [
@@ -393,12 +396,12 @@ def test_internal_fields_cannot_be_queried_directly():
             BookRecord("PGW", "The Code of the Woosters"),
         ]
 
-        author_id = field(type=GraphQLString, internal=True)
+        author_id = field(type=String, internal=True)
         author = single(lambda: StaticDataObjectType.select(
             Author,
             join={Book.author_id: Author.id},
         ))
-        title = field(type=GraphQLString)
+        title = field(type=String)
 
     class Root(RootType):
         books = many(lambda: StaticDataObjectType.select(Book))
@@ -425,11 +428,11 @@ def test_internal_fields_cannot_be_queried_directly():
 def test_internal_relationship_fields_cannot_be_queried_directly():
     class Author(StaticDataObjectType):
         __records__ = []
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Book(StaticDataObjectType):
         __records__ = []
-        title = field(type=GraphQLString)
+        title = field(type=String)
 
     class Root(RootType):
         authors = many(lambda: StaticDataObjectType.select(Author))
@@ -447,7 +450,7 @@ def test_internal_relationship_fields_cannot_be_queried_directly():
 def test_can_query_fields_extracted_from_internal_fields():
     class Book(StaticDataObjectType):
         __records__ = []
-        title = field(type=GraphQLString)
+        title = field(type=String)
 
     class Root(RootType):
         books = many(lambda: StaticDataObjectType.select(Book), internal=True)
@@ -467,12 +470,12 @@ def test_field_set_can_be_used_to_declare_multiple_fields_in_one_attribute():
     class Author(StaticDataObjectType):
         __records__ = [AuthorRecord("PG Wodehouse")]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Book(StaticDataObjectType):
         __records__ = [BookRecord("Leave it to Psmith")]
 
-        title = field(type=GraphQLString)
+        title = field(type=String)
 
     class Root(RootType):
         fields = field_set(
@@ -496,11 +499,11 @@ def test_arg_method_can_be_used_as_decorator_to_refine_query():
             AuthorRecord("Joseph Heller"),
         ]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
-        @author.arg("nameStartsWith", GraphQLString)
+        @author.arg("nameStartsWith", String)
         def author_arg_starts_with(records, prefix):
             return list(filter(
                 lambda record: record.name.startswith(prefix),
@@ -522,11 +525,11 @@ def test_arg_refiner_can_take_context():
             AuthorRecord("Joseph Heller"),
         ]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
-        @author.arg("nameStartsWith", GraphQLBoolean)
+        @author.arg("nameStartsWith", Boolean)
         def author_arg_starts_with(records, _, context):
             return list(filter(
                 lambda record: record.name.startswith(context),
@@ -561,7 +564,7 @@ def test_can_define_args_directly_on_field():
             AuthorRecord("Joseph Heller"),
         ]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
         @classmethod
         def __fetch_immediates__(cls, selections, query, context):
@@ -585,7 +588,7 @@ def test_can_define_args_directly_on_field():
         author = single(
             lambda: select(Author),
             args={
-                "nameStartsWith": GraphQLString,
+                "nameStartsWith": String,
             },
         )
 
@@ -599,7 +602,7 @@ def test_fields_can_be_defined_on_superclass():
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
     class Named(object):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Author(Named, StaticDataObjectType):
         __records__ = [AuthorRecord("PG Wodehouse")]
@@ -617,7 +620,7 @@ def test_can_define_input_object_types():
     AuthorRecord = attr.make_class("AuthorRecord", ["name"])
 
     class AuthorSelection(InputObjectType):
-        name_starts_with = field(type=GraphQLString)
+        name_starts_with = field(type=String)
 
     class Author(StaticDataObjectType):
         __records__ = [
@@ -625,7 +628,7 @@ def test_can_define_input_object_types():
             AuthorRecord("Joseph Heller"),
         ]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
@@ -646,12 +649,12 @@ def test_explicitly_null_fields_can_be_differentiated_from_undefined_fields():
     SelectionRecord = attr.make_class("SelectionRecord", ["name"])
 
     class SelectionInput(InputObjectType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Selection(StaticDataObjectType):
         __records__ = []
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         selection = single(lambda: StaticDataObjectType.select(Selection))
@@ -682,7 +685,7 @@ def test_explicitly_null_fields_can_be_differentiated_from_undefined_fields():
 class TestInputObjectType(object):
     def test_field_is_read_from_dict(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         assert_that(
             AuthorSelection.__read__({"nameStartsWith": "Bob"}),
@@ -691,7 +694,7 @@ class TestInputObjectType(object):
 
     def test_raw_value_is_available(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         assert_that(
             AuthorSelection.__read__({"nameStartsWith": "Bob"}),
@@ -700,7 +703,7 @@ class TestInputObjectType(object):
 
     def test_non_null_field_is_read_from_dict(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=NonNull(GraphQLString))
+            name_starts_with = field(type=NonNull(String))
 
         assert_that(
             AuthorSelection.__read__({"nameStartsWith": "Bob"}),
@@ -709,7 +712,7 @@ class TestInputObjectType(object):
 
     def test_list_field_is_read_from_dict(self):
         class AuthorSelection(InputObjectType):
-            names = field(type=List(GraphQLString))
+            names = field(type=List(String))
 
         assert_that(
             AuthorSelection.__read__({"names": ["Bob"]}),
@@ -718,7 +721,7 @@ class TestInputObjectType(object):
 
     def test_missing_fields_have_value_of_undefined(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         assert_that(
             AuthorSelection.__read__({}),
@@ -727,7 +730,7 @@ class TestInputObjectType(object):
 
     def test_when_default_is_set_then_missing_fields_have_default_value(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString, default=None)
+            name_starts_with = field(type=String, default=None)
 
         assert_that(
             AuthorSelection.__read__({}),
@@ -736,7 +739,7 @@ class TestInputObjectType(object):
 
     def test_fields_are_recursively_read(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         class BookSelection(InputObjectType):
             author_selection = field(type=AuthorSelection)
@@ -750,7 +753,7 @@ class TestInputObjectType(object):
 
     def test_non_null_fields_are_recursively_read(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         class BookSelection(InputObjectType):
             author_selection = field(type=NonNull(AuthorSelection))
@@ -764,7 +767,7 @@ class TestInputObjectType(object):
 
     def test_list_fields_are_recursively_read(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         class BookSelection(InputObjectType):
             author_selections = field(type=List(AuthorSelection))
@@ -778,7 +781,7 @@ class TestInputObjectType(object):
 
     def test_missing_object_type_fields_have_value_of_undefined(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         class BookSelection(InputObjectType):
             author_selection = field(type=AuthorSelection)
@@ -790,7 +793,7 @@ class TestInputObjectType(object):
 
     def test_object_type_field_of_null_is_read_as_none(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         class BookSelection(InputObjectType):
             author_selection = field(type=AuthorSelection)
@@ -802,7 +805,7 @@ class TestInputObjectType(object):
 
     def test_can_instantiate_object_type(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         selection = AuthorSelection(name_starts_with="Bob")
 
@@ -813,7 +816,7 @@ class TestInputObjectType(object):
 
     def test_unspecified_fields_are_undefined_when_instantiating_input_object_type(self):
         class AuthorSelection(InputObjectType):
-            name_starts_with = field(type=GraphQLString)
+            name_starts_with = field(type=String)
 
         selection = AuthorSelection()
 
@@ -851,7 +854,7 @@ def test_name_of_object_type_can_be_overridden():
     class GeneratedType(ObjectType):
         __name__ = "User"
 
-        email_address = field(type=GraphQLString)
+        email_address = field(type=String)
         __fetch_immediates__ = None
 
     assert_that(GeneratedType.__name__, equal_to("User"))
@@ -862,8 +865,8 @@ def test_query_can_be_executed_with_subschema():
     class Author(StaticDataObjectType):
         __records__ = []
 
-        id = field(type=GraphQLInt)
-        name = field(type=GraphQLString)
+        id = field(type=Int)
+        name = field(type=String)
 
     class Root(RootType):
         author = single_or_null(lambda: StaticDataObjectType.select(Author))
@@ -905,7 +908,7 @@ def test_when_specified_schema_is_not_superschema_then_error_is_raised():
     class Author(StaticDataObjectType):
         __records__ = []
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class Root(RootType):
         author = single(lambda: StaticDataObjectType.select(Author))
@@ -946,10 +949,10 @@ def test_variables_are_validated():
             AuthorRecord("Joseph Heller"),
         ]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class AuthorSelection(InputObjectType):
-        limit = field(type=GraphQLInt, default=None)
+        limit = field(type=Int, default=None)
 
     class Root(RootType):
         authors = many(lambda: StaticDataObjectType.select(Author))
@@ -982,11 +985,11 @@ def test_variables_are_validated_against_whitelist():
             AuthorRecord("Joseph Heller"),
         ]
 
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
     class AuthorSelection(InputObjectType):
-        limit = field(type=GraphQLInt, default=None)
-        name = field(type=GraphQLString, default=None)
+        limit = field(type=Int, default=None)
+        name = field(type=String, default=None)
 
     class Root(RootType):
         authors = many(lambda: StaticDataObjectType.select(Author))
@@ -1035,8 +1038,8 @@ def test_variables_are_validated_against_whitelist():
 
 def test_can_read_fields_of_input_object_types():
     class UserInput(InputObjectType):
-        username = field(type=GraphQLString)
-        email_address = field(type=GraphQLString)
+        username = field(type=String)
+        email_address = field(type=String)
 
     assert_that(fields(UserInput), contains_inanyorder(
         has_properties(attr_name="username", field_name="username"),

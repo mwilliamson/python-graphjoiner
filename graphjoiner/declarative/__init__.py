@@ -5,6 +5,7 @@ import re
 import types
 
 import attr
+import graphql
 from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType, GraphQLList, GraphQLNonNull
 import six
 
@@ -253,7 +254,7 @@ class RelationshipDefinition(FieldDefinition):
         )
 
     def _add_arg(self, arg_name, arg_type, refine_query):
-        if isinstance(arg_type, type) and issubclass(arg_type, InputObjectType):
+        if _is_declarative_input_type(arg_type):
             read_arg_value = arg_type.__read__
             arg_type = arg_type.__graphql__
         else:
@@ -499,6 +500,28 @@ class _Undefined(object):
 
 
 undefined = _Undefined()
+
+
+class ScalarInputType(InputType):
+    @staticmethod
+    def __read__(value):
+        return value
+
+
+class Boolean(ScalarInputType):
+    __graphql__ = graphql.GraphQLBoolean
+
+
+class Float(ScalarInputType):
+    __graphql__ = graphql.GraphQLFloat
+
+
+class Int(ScalarInputType):
+    __graphql__ = graphql.GraphQLInt
+
+
+class String(ScalarInputType):
+    __graphql__ = graphql.GraphQLString
 
 
 class NonNull(InputType):

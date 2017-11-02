@@ -64,8 +64,7 @@ We then define object types for the root, books and authors:
 
 .. code-block:: python
 
-    from graphql import GraphQLString
-    from graphjoiner.declarative import RootType, single, many, select
+    from graphjoiner.declarative import RootType, single, many, select, String
     from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType, column_field, sql_join
 
     class Author(SqlAlchemyObjectType):
@@ -86,7 +85,7 @@ We then define object types for the root, books and authors:
     class Root(RootType):
         books = many(lambda: select(Book))
 
-        @books.arg("genre", GraphQLString)
+        @books.arg("genre", String)
         def books_arg_genre(query, genre):
             return query.filter(BookRecord.genre == genre)
 
@@ -268,8 +267,7 @@ to implement a base type for static data:
 
     import collections
 
-    from graphjoiner.declarative import ObjectType, RootType, select, single
-    from graphql import GraphQLString
+    from graphjoiner.declarative import ObjectType, RootType, select, single, String
 
     class StaticDataObjectType(ObjectType):
         __abstract__ = True
@@ -368,12 +366,11 @@ and each book has an author ID:
 
 .. code-block:: python
 
-    from graphjoiner.declarative import field, ObjectType, select, single
-    from graphql import GraphQLInt
+    from graphjoiner.declarative import field, Int, ObjectType, select, single
 
     class Book(ObjectType):
         ...
-        author_id = field(type=GraphQLInt)
+        author_id = field(type=Int)
         author = single(lambda: select(
             Author,
             join_fields={Book.author_id: Author.id},
@@ -498,11 +495,10 @@ subclass ``InterfaceType`` and specify fields using ``field()``:
 
 .. code-block:: python
 
-    from graphjoiner.declarative import InterfaceType
-    from graphql import GraphQLString
+    from graphjoiner.declarative import InterfaceType, String
 
     class HasName(InterfaceType):
-        name = field(type=GraphQLString)
+        name = field(type=String)
 
 To set which interfaces an object implements,
 set the ``__interfaces__`` attribute:
@@ -523,11 +519,11 @@ For instance, this definition without field sets:
 
 .. code-block:: python
 
-    from graphjoiner.declarative import field, ObjectType
+    from graphjoiner.declarative import field, Int, ObjectType
 
     class Book(ObjectType):
         title = field(type=GraphQLString)
-        author_id = field(type=GraphQLInt)
+        author_id = field(type=Int)
 
 is roughly equivalent to this definition using field sets:
 
