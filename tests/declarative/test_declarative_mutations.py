@@ -7,8 +7,6 @@ from ..matchers import is_successful_result
 
 
 class StaticDataObjectType(ObjectType):
-    __abstract__ = True
-
     @classmethod
     def __select_all__(cls):
         return cls.__records__

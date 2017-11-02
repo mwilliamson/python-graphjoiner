@@ -10,8 +10,6 @@ from . import field, get_field_definitions, ObjectType, join_builder
 
 
 class SqlAlchemyObjectType(ObjectType):
-    __abstract__ = True
-
     @staticmethod
     def __get_session__(context):
         return context.session

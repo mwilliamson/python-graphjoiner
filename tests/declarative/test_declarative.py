@@ -33,8 +33,6 @@ from ..matchers import is_invalid_result, is_successful_result
 
 
 class StaticDataObjectType(ObjectType):
-    __abstract__ = True
-
     @staticmethod
     @join_builder
     def select(local, target, join=None):

@@ -280,7 +280,7 @@ to implement a base type for static data:
 
     from graphjoiner.declarative import ObjectType, RootType, select, single, String
 
-    class StaticDataObjectType(object):
+    class StaticDataObjectType(ObjectType):
         @classmethod
         def __select_all__(cls):
             return cls.__records__
@@ -297,7 +297,7 @@ to implement a base type for static data:
 
     AuthorRecord = collections.namedtuple("AuthorRecord", ["name"])
 
-    class Author(StaticDataObjectType, ObjectType):
+    class Author(StaticDataObjectType):
         __records__ = [AuthorRecord("PG Wodehouse")]
 
         name = field(type=String)
