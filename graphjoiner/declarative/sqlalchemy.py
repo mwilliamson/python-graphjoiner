@@ -39,10 +39,11 @@ class SqlAlchemyObjectType(ObjectType):
             selection.field.column
             for selection in selections
         ))
-        for primary_key_column in cls.__primary_key__():
-            query = query.add_columns(primary_key_column)
 
         if not query._distinct:
+            for primary_key_column in cls.__primary_key__():
+                query = query.add_columns(primary_key_column)
+
             query = query.distinct()
 
         return query.with_session(cls.__get_session__(context)).all()

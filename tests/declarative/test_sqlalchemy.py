@@ -407,6 +407,58 @@ def test_column_field_can_be_marked_as_internal():
     )
 
 
+def test_distinct_rows_are_fetched_based_on_primary_key():
+    Base = declarative_base()
+
+    class LabelRecord(Base):
+        __tablename__ = "author"
+
+        c_id = Column(Integer, primary_key=True)
+        c_label = Column(Unicode, nullable=False)
+
+    class Label(SqlAlchemyObjectType):
+        __model__ = LabelRecord
+
+        @classmethod
+        def __select_all__(cls):
+            two_values = sqlalchemy.orm.Query(sqlalchemy.union(
+                    sqlalchemy.select([1]),
+                    sqlalchemy.select([2]),
+                )).subquery()
+            
+            return super(Label, cls).__select_all__() \
+                .join(two_values, sqlalchemy.literal(True))
+
+        id = column_field(LabelRecord.c_id)
+        label = column_field(LabelRecord.c_label)
+
+    class Root(RootType):
+        labels = many(lambda: select(Label))
+
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(engine)
+
+    session = Session(engine)
+    session.add(LabelRecord(c_id=1, c_label="First"))
+    session.add(LabelRecord(c_id=2, c_label="Second"))
+    session.add(LabelRecord(c_id=3, c_label="Second"))
+    session.commit()
+
+    result = executor(Root)("""{
+        labels {
+            label
+        }
+    }""", context=QueryContext(session=session))
+    assert_that(result, is_successful_result(data={
+        "labels": [
+            {"label": "First"},
+            {"label": "Second"},
+            {"label": "Second"},
+        ],
+    }))
+
+
 def test_distinct_on_is_preserved_when_fetching_immediates():
     # TODO: set up PostgreSQL tests to get this working
     return
