@@ -325,14 +325,14 @@ For instance, to select all books from the root type:
         books = many(lambda: select(Book))
 
 Each relationship function accepts a joiner:
-a value that describes how to join the local type to the remote type.
+a value that describes how to join the left type to the right type.
 The joiner is always wrapped in a lambda to defer evaluation until all types are defined.
-In this case, the local type is ``Root``, the remote type is ``Book``,
+In this case, the left type is ``Root``, the right type is ``Book``,
 and the joiner is ``select(Book)``.
-Calling ``select()`` with just the target type tells GraphJoiner to select all values,
+Calling ``select()`` with just the right type tells GraphJoiner to select all values,
 in this case all books.
 
-All joiners accept a ``filter`` argument that allow the remote query to be tweaked.
+All joiners accept a ``filter`` argument that allow the query to be tweaked.
 For instance,
 supposing books are selected using SQLAlchemy queries,
 and we want the ``books`` field to be sorted by title:
@@ -367,13 +367,13 @@ Relationships can have
 Creates a joiner to the target type.
 When given no additional arguments,
 it will select all values of the target type using ``target.__select_all__()``.
-All local values are joined onto all remote values
+All left values are joined onto all right values
 i.e. the join is the cartesian product.
-Unless the local type is the root type,
+Unless the left type is the root type,
 this probably isn't what you want.
 
-Set ``join_fields`` to describe which fields to use to join together the local and remote types.
-Each item in the dictionary should map a local field to a remote field.
+Set ``join_fields`` to describe which fields to use to join together the left and right types.
+Each item in the dictionary should map a field from the left type to a field from the right type.
 For instance, supposing each author has a unique ID,
 and each book has an author ID:
 
@@ -389,10 +389,10 @@ and each book has an author ID:
             join_fields={Book.author_id: Author.id},
         ))
 
-Set ``join_query`` to describe how to join the local query and the remote query.
-This should be a function that accepts a local query and a remote query,
-and returns a remote query filtered to the values relevant to the local query.
-This avoids the cost of fetching all remote values only to discard those that don't join onto any local values.
+Set ``join_query`` to describe how to join the left query and the right query.
+This should be a function that accepts a left query and a right query,
+and returns a right query filtered to the values relevant to the left query.
+This avoids the cost of fetching all values of the right type only to discard those that don't join onto any left values.
 For instance, when using the ``sqlalchemy`` module,
 we'd like to fetch the authors for just the requested book,
 rather than all available authors:
