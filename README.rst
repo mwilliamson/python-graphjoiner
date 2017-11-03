@@ -438,6 +438,7 @@ In this particular case, using ``sql_join()`` would remove much of the boilerpla
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Create a new field by extracting ``sub_field`` from ``field``.
+The arguments for the new field are the same as the arguments for ``field``.
 
 For instance,
 supposing we have a field ``books`` on the root type,
