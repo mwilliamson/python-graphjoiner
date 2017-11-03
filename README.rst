@@ -313,7 +313,7 @@ to implement a base type for static data:
 Relationships
 ^^^^^^^^^^^^^
 
-Use ``single``, ``first_or_none`` and ``many`` to create fields that are joined to other types.
+Use ``single``, ``single_or_null``, ``first_or_null`` and ``many`` to create fields that are joined to other types.
 For instance, to select all books from the root type:
 
 .. code-block:: python
