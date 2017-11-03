@@ -584,7 +584,9 @@ Field sets are useful when a set of fields needs to be generated dynamically.
 Input object types
 ^^^^^^^^^^^^^^^^^^
 
-Define input types by inheriting from ``InputObjectType``:
+Define input types by inheriting from ``InputObjectType``,
+and defining fields using ``field()``.
+For instance:
 
 .. code-block:: python
 
@@ -598,15 +600,65 @@ For instance:
 
 .. code-block:: python
 
+    from graphjoiner.declarative import many, RootType, select, String
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+
+        ...
+
+        @staticmethod
+        def filter_by_title(query, title):
+            # query is an instance of sqlalchemy.orm.Query
+            return query.filter(BookRecord.title == title)
+
     class Root(RootType):
-        books = select(lambda: many(Book))
-        
+        ...
+
+        books = many(lambda: select(Book))
         @books.arg("selection", BookSelectionInput)
-        def books_arg_selection(books_query, selection):
+        def books_arg_title(query, title):
             if selection.title is not None:
-                books_query = filter_books_query(books_query, title=selection.title)
-            
-            return books_query
+                query = Book.filter_by_title(query, title)
+
+            return query
+
+The default value for each field can be set by passing the ``default`` argument to each field.
+To allow the absence of a value to be distinguished from an explicit null value,
+the default value for a field is ``undefined`` if the ``default`` argument is not set.
+For instance,
+to allow books to be filtered by title,
+including null titles:
+
+.. code-block:: python
+
+    from graphjoiner.declarative import field, InputObjectType, many, RootType, select, String, undefined
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
+
+    class BookSelectionInput(InputObjectType):
+        title = field(type=String)
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+
+        ...
+
+        @staticmethod
+        def filter_by_title(query, title):
+            # query is an instance of sqlalchemy.orm.Query
+            return query.filter(BookRecord.title == title)
+
+    class Root(RootType):
+        ...
+
+        books = many(lambda: select(Book))
+        @books.arg("selection", BookSelectionInput)
+        def books_arg_title(query, title):
+            if selection.title is not undefined:
+                query = Book.filter_by_title(query, title)
+
+            return query
 
 Core Example
 ------------
