@@ -340,6 +340,7 @@ and we want the ``books`` field to be sorted by title:
 .. code-block:: python
 
     from graphjoiner.declarative import many, RootType, select
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
 
     class Book(SqlAlchemyObjectType):
         __model__ = BookRecord
@@ -348,8 +349,8 @@ and we want the ``books`` field to be sorted by title:
 
         @staticmethod
         def order_by_title(query):
-             # query is an instance of sqlalchemy.orm.Query
-             return query.order_by(BookRecord.title)
+            # query is an instance of sqlalchemy.orm.Query
+            return query.order_by(BookRecord.title)
 
     class Root(RootType):
         ...
@@ -359,7 +360,34 @@ and we want the ``books`` field to be sorted by title:
             filter=Book.order_by_title,
         ))
 
-Relationships can have
+Arguments can be added using the ``arg()`` decorator.
+If the GraphQL selection for that field includes a value for the argument,
+the query is updated using the decorated function.
+For instance, to allow books to be filtered by title:
+
+.. code-block:: python
+
+    from graphjoiner.declarative import many, RootType, select, String
+    from graphjoiner.declarative.sqlalchemy import SqlAlchemyObjectType
+
+    class Book(SqlAlchemyObjectType):
+        __model__ = BookRecord
+
+        ...
+
+        @staticmethod
+        def filter_by_title(query, title):
+            # query is an instance of sqlalchemy.orm.Query
+            return query.filter(BookRecord.title == title)
+
+    class Root(RootType):
+        ...
+
+        books = many(lambda: select(Book))
+        @books.arg("title", String)
+        def books_arg_title(query, title):
+            return Book.filter_by_title(query, title)
+
 
 ``select(target, join_query=None, join_fields=None)``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
