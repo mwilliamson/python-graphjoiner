@@ -561,8 +561,23 @@ Define input types by inheriting from ``InputObjectType``:
 
     from graphjoiner.declarative import InputObjectType, String
 
-    class AddBookInput(InputObjectType):
-        title = field(type=String)
+    class BookSelectionInput(InputObjectType):
+        title = field(type=String, default=None)
+
+The fields on input object values are available as attributes.
+For instance:
+
+.. code-block:: python
+
+    class Root(RootType):
+        books = select(lambda: many(Book))
+        
+        @books.arg("selection", BookSelectionInput)
+        def books_arg_selection(books_query, selection):
+            if selection.title is not None:
+                books_query = filter_books_query(books_query, title=selection.title)
+            
+            return books_query
 
 Core Example
 ------------
