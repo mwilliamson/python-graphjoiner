@@ -16,7 +16,7 @@ from hamcrest import all_of, equal_to, has_properties, instance_of
 def is_successful_result(data):
     return has_properties(
         data=data,
-        errors=equal_to([]),
+        errors=equal_to(None),
         invalid=equal_to(False),
     )
 

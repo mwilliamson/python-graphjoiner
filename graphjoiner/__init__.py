@@ -86,7 +86,7 @@ def _execute(schema, root, query, context=None, variables=None, mutation=None):
 
             data.update(schema_result.data)
 
-        return ExecutionResult(data=data, errors=[])
+        return ExecutionResult(data=data, errors=None)
     except GraphQLError as error:
         return ExecutionResult(errors=[error], invalid=True)
 
@@ -131,7 +131,7 @@ class Field(FieldBase):
         return GraphQLInputObjectField(type=self.type)
 
 
-def _resolve_fetched_field(source, args, context, info):
+def _resolve_fetched_field(source, info, **args):
     return source[field_key(info.field_asts[0])]
 
 
@@ -206,11 +206,11 @@ class Relationship(FieldBase):
         if self.join:
             resolve = _resolve_fetched_field
         else:
-            def resolve(source, args, context, info):
+            def resolve(source, info, **args):
                 request = request_from_graphql_ast(
                     info.field_asts[0],
                     self.target,
-                    context=context,
+                    context=info.context,
                     variables=info.variable_values,
                     field=self,
                     fragments=info.fragments,
