@@ -49,6 +49,9 @@ def execute(root, *args, **kwargs):
 
 
 def _execute(schema, root, query, context=None, variables=None, mutation=None):
+    if variables is None:
+        variables = {}
+
     try:
         ast = parse(query)
 

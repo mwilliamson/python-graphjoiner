@@ -1043,3 +1043,44 @@ def test_can_read_fields_of_input_object_types():
         has_properties(attr_name="username", field_name="username"),
         has_properties(attr_name="email_address", field_name="emailAddress"),
     ))
+
+
+def test_variables_can_be_none():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class Author(StaticDataObjectType):
+        __records__ = [
+            AuthorRecord("PG Wodehouse"),
+            AuthorRecord("Joseph Heller"),
+        ]
+
+        name = field(type=String)
+
+    class Root(RootType):
+        authors = many(lambda: StaticDataObjectType.select(Author))
+
+        @authors.arg("name", String)
+        def authors_arg_selection(records, name):
+            if name is not None:
+                records = list(filter(
+                    lambda record: record.name == name,
+                    records,
+                ))
+            return records
+
+    execute = executor(Root)
+    query = """query ($name: String) { authors(name: $name) { name } }"""
+
+    assert_that(
+        execute(query, variables={"name": "PG Wodehouse"}),
+        is_successful_result(data={
+            "authors": [{"name": "PG Wodehouse"}],
+        }),
+    )
+
+    assert_that(
+        execute(query, variables=None),
+        is_successful_result(data={
+            "authors": [{"name": "PG Wodehouse"}, {"name": "Joseph Heller"}],
+        }),
+    )
