@@ -436,19 +436,22 @@ class InputObjectTypeMeta(type):
 
         @staticmethod
         def read_arg_value(value):
-            def get_value(field_definition):
-                field = field_definition.__get__(None, cls)
-                field_value = value[field.field_name]
-                return _read_input_value(field_definition.type, field_value)
+            if value is None:
+                return None
+            else:
+                def get_value(field_definition):
+                    field = field_definition.__get__(None, cls)
+                    field_value = value[field.field_name]
+                    return _read_input_value(field_definition.type, field_value)
 
-            return cls(
-                raw_=value,
-                **dict(
-                    (field_definition.attr_name, get_value(field_definition))
-                    for field_definition in field_definitions
-                    if field_definition.field_name in value
+                return cls(
+                    raw_=value,
+                    **dict(
+                        (field_definition.attr_name, get_value(field_definition))
+                        for field_definition in field_definitions
+                        if field_definition.field_name in value
+                    )
                 )
-            )
 
         cls.__read__ = read_arg_value
 

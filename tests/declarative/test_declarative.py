@@ -681,6 +681,15 @@ def test_explicitly_null_fields_can_be_differentiated_from_undefined_fields():
 
 
 class TestInputObjectType(object):
+    def test_reading_none_returns_none(self):
+        class AuthorSelection(InputObjectType):
+            name_starts_with = field(type=String)
+
+        assert_that(
+            AuthorSelection.__read__(None),
+            equal_to(None),
+        )
+
     def test_field_is_read_from_dict(self):
         class AuthorSelection(InputObjectType):
             name_starts_with = field(type=String)
