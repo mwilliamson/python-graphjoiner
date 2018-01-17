@@ -35,17 +35,24 @@ def _is_declarative_input_type(type_):
     return (isinstance(type_, type) and issubclass(type_, InputType)) or isinstance(type_, InputType)
 
 
-class ObjectTypeMeta(type):
+class TypeMeta(type):
+    def __new__(meta, name, bases, attrs):
+        cls = super(TypeMeta, meta).__new__(meta, name, bases, attrs)
+
+        name = attrs.get("__name__")
+        if name is not None:
+            cls.__name__ = name
+
+        return cls
+
+
+class ObjectTypeMeta(TypeMeta):
     def __new__(meta, name, bases, attrs):
         cls = super(ObjectTypeMeta, meta).__new__(meta, name, bases, attrs)
         if attrs.get("__abstract__"):
             return cls
 
         _, fields = _declare_fields(cls)
-
-        name = attrs.get("__name__")
-        if name is not None:
-            cls.__name__ = name
 
         cls.__graphjoiner__ = graphjoiner.JoinType(
             name=cls.__name__,
@@ -367,7 +374,7 @@ def join(local, target, query, join_fields):
     return target, build_query, join_fields
 
 
-class InterfaceTypeMeta(type):
+class InterfaceTypeMeta(TypeMeta):
     def __new__(meta, name, bases, attrs):
         cls = super(InterfaceTypeMeta, meta).__new__(meta, name, bases, attrs)
         if attrs.get("__abstract__"):
@@ -397,7 +404,7 @@ def fields(cls):
     return cls.__fields__()
 
 
-class InputObjectTypeMeta(type):
+class InputObjectTypeMeta(TypeMeta):
     def __new__(meta, name, bases, attrs):
         cls = super(InputObjectTypeMeta, meta).__new__(meta, name, bases, attrs)
         if attrs.get("__abstract__"):

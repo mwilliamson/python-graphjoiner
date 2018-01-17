@@ -868,6 +868,28 @@ def test_name_of_object_type_can_be_overridden():
     assert_that(GeneratedType.__graphql__.of_type.name, equal_to("User"))
 
 
+def test_name_of_interface_type_can_be_overridden():
+    class GeneratedType(InterfaceType):
+        __name__ = "User"
+
+        email_address = field(type=String)
+        __fetch_immediates__ = None
+
+    assert_that(GeneratedType.__name__, equal_to("User"))
+    assert_that(GeneratedType.__graphql__.name, equal_to("User"))
+
+
+def test_name_of_input_object_type_can_be_overridden():
+    class GeneratedType(InputObjectType):
+        __name__ = "User"
+
+        email_address = field(type=String)
+        __fetch_immediates__ = None
+
+    assert_that(GeneratedType.__name__, equal_to("User"))
+    assert_that(GeneratedType.__graphql__.name, equal_to("User"))
+
+
 def test_query_can_be_executed_with_subschema():
     class Author(StaticDataObjectType):
         __records__ = []
