@@ -1115,3 +1115,38 @@ def test_variables_can_be_none():
             "authors": [{"name": "PG Wodehouse"}, {"name": "Joseph Heller"}],
         }),
     )
+
+def test_fields_are_in_alphabetical_ordering():
+    class Root(RootType):
+        value_b = field(type=Int)
+        value_a = field(type=Int)
+        value_c = field(type=Int)
+
+
+    execute = executor(Root)
+    query = """
+        query {
+            __schema {
+                queryType {
+                    fields {
+                        name
+                    }
+                }
+            }
+        }
+    """
+
+    assert_that(
+        execute(query),
+        is_successful_result(data={
+            "__schema": {
+                "queryType": {
+                    "fields": [
+                        {"name": "valueA"},
+                        {"name": "valueB"},
+                        {"name": "valueC"},
+                    ],
+                },
+            },
+        }),
+    )

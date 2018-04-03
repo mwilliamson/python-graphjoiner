@@ -70,11 +70,11 @@ def get_field_definitions(cls):
     for base in reversed(inspect.getmro(cls)):
         dicts.update(base.__dict__)
 
-    return [
+    return sorted([
         (field_key, field_definition)
         for key, value in six.iteritems(dicts)
         for field_key, field_definition in _attr_to_field_definitions(key, value)
-    ]
+    ], key=lambda field: field[0])
 
 
 def _attr_to_field_definitions(key, value):
@@ -90,7 +90,7 @@ def _declare_fields(cls):
     field_definitions = get_field_definitions(cls)
 
     def fields():
-        return dict(
+        return collections.OrderedDict(
             (field_definition.field_name, field_definition.__get__(None, cls))
             for key, field_definition in field_definitions
         )
@@ -417,7 +417,7 @@ class InputObjectTypeMeta(TypeMeta):
 
         cls.__graphql__ = GraphQLInputObjectType(
             name=cls.__name__,
-            fields=lambda: dict(
+            fields=lambda: collections.OrderedDict(
                 (key, field.to_graphql_input_field())
                 for key, field in six.iteritems(fields())
             ),

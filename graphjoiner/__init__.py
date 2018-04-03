@@ -1,4 +1,5 @@
 import abc
+import collections
 from itertools import groupby
 
 from attr import assoc
@@ -408,7 +409,7 @@ class JoinType(Value):
         if self._graphql_type is None:
             self._graphql_type = GraphQLObjectType(
                 name=self._name,
-                fields=lambda: dict(
+                fields=lambda: collections.OrderedDict(
                     (name, field.to_graphql_field())
                     for name, field in six.iteritems(self.fields())
                     if not getattr(field, "internal", False)
