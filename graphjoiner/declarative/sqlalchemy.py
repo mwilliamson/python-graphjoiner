@@ -15,10 +15,6 @@ class SqlAlchemyObjectType(ObjectType):
         return context.session
 
     @classmethod
-    def __primary_key__(cls):
-        return cls.__model__.__mapper__.primary_key
-
-    @classmethod
     def __select_all__(cls):
         query = Query([]).select_from(cls.__model__)
         # This is a workaround for a bug in SQLAlchemy:
@@ -39,12 +35,6 @@ class SqlAlchemyObjectType(ObjectType):
             selection.field.column
             for selection in selections
         ))
-
-        if not query._distinct:
-            for primary_key_column in cls.__primary_key__():
-                query = query.add_columns(primary_key_column)
-
-            query = query.distinct()
 
         return query.with_session(cls.__get_session__(context)).all()
 
@@ -89,17 +79,13 @@ def sql_join(local, target, join=None):
 
     def build_query(parent_query, context):
         parents = parent_query \
-            .with_entities(*(
-                local_field.column
-                for local_field in join.keys()
+            .filter(sqlalchemy.and_(
+                local_field.column == remote_field.column
+                for local_field, remote_field in join.items()
             )) \
-            .subquery()
+            .correlate(target.__model__)
 
-        return target.__select_all__() \
-            .join(parents, sqlalchemy.and_(
-                parent_column == remote_field.column
-                for parent_column, remote_field in zip(parents.c.values(), join.values())
-            ))
+        return target.__select_all__().filter(parents.exists())
 
     return target, build_query, dict(
         (local_field.field_name, remote_field.field_name)
