@@ -1,11 +1,14 @@
+import os
+
 import graphql
-from hamcrest import all_of, assert_that, contains_inanyorder, equal_to, has_entries, has_properties, has_string, instance_of, starts_with
+from hamcrest import all_of, assert_that, contains_inanyorder, equal_to, has_properties, has_string, instance_of, starts_with
 import pytest
-import sqlalchemy
 from sqlalchemy import create_engine, Column, ForeignKey, Integer, literal, String, Unicode
+import sqlalchemy.event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import relationship, Session
+import sqlalchemy.pool
 
 from graphjoiner.declarative import executor, field, many, RootType, select
 from graphjoiner.declarative.sqlalchemy import (
@@ -18,7 +21,7 @@ from graphjoiner.declarative.sqlalchemy import (
 from ..matchers import is_invalid_result, is_successful_result
 
 
-def test_when_join_condition_is_unambiguous_then_join_condition_is_inferred():
+def test_when_join_condition_is_unambiguous_then_join_condition_is_inferred(engine):
     Base = declarative_base()
 
     class AuthorRecord(Base):
@@ -33,6 +36,7 @@ def test_when_join_condition_is_unambiguous_then_join_condition_is_inferred():
         c_id = Column(Integer, primary_key=True)
         c_title = Column(Unicode, nullable=False)
         c_author_id = Column(Integer, ForeignKey(AuthorRecord.c_id))
+        author = relationship(AuthorRecord)
 
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
@@ -51,15 +55,13 @@ def test_when_join_condition_is_unambiguous_then_join_condition_is_inferred():
     class Root(RootType):
         authors = many(lambda: select(Author))
 
-    engine = create_engine("sqlite:///:memory:")
-
     Base.metadata.create_all(engine)
 
     session = Session(engine)
-    session.add(AuthorRecord(c_name="PG Wodehouse"))
-    session.add(AuthorRecord(c_name="Joseph Heller"))
-    session.add(BookRecord(c_title="Leave It to Psmith", c_author_id=1))
-    session.add(BookRecord(c_title="Catch-22", c_author_id=2))
+    wodehouse = AuthorRecord(c_name="PG Wodehouse")
+    heller = AuthorRecord(c_name="Joseph Heller")
+    session.add(BookRecord(c_title="Leave It to Psmith", author=wodehouse))
+    session.add(BookRecord(c_title="Catch-22", author=heller))
     session.commit()
 
     result = executor(Root)("""{
@@ -76,7 +78,7 @@ def test_when_join_condition_is_unambiguous_then_join_condition_is_inferred():
     }))
 
 
-def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_objects():
+def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_objects(engine):
     Base = declarative_base()
 
     class AuthorRecord(Base):
@@ -109,13 +111,11 @@ def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_
     class Root(RootType):
         authors = many(lambda: select(Author))
 
-    engine = create_engine("sqlite:///:memory:")
-
     Base.metadata.create_all(engine)
 
     session = Session(engine)
-    session.add(AuthorRecord(c_name="PG Wodehouse"))
-    session.add(AuthorRecord(c_name="Joseph Heller"))
+    session.add(AuthorRecord(c_id=1, c_name="PG Wodehouse"))
+    session.add(AuthorRecord(c_id=2, c_name="Joseph Heller"))
     session.add(BookRecord(c_title="Leave It to Psmith", c_author_id=1))
     session.add(BookRecord(c_title="Catch-22", c_author_id=2))
     session.commit()
@@ -134,7 +134,7 @@ def test_can_explicitly_set_join_condition_with_single_field_between_sqlalchemy_
     }))
 
 
-def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalchemy_objects():
+def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalchemy_objects(postgresql_engine):
     Base = declarative_base()
 
     class AuthorRecord(Base):
@@ -174,11 +174,9 @@ def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalche
     class Root(RootType):
         authors = many(lambda: select(Author))
 
-    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(postgresql_engine)
 
-    Base.metadata.create_all(engine)
-
-    session = Session(engine)
+    session = Session(postgresql_engine)
     wodehouse = AuthorRecord(c_name="PG Wodehouse", c_id_1=1, c_id_2=11)
     heller = AuthorRecord(c_name="Joseph Heller", c_id_1=2, c_id_2=12)
     session.add(wodehouse)
@@ -202,7 +200,7 @@ def test_can_explicitly_set_join_condition_with_multiple_fields_between_sqlalche
     }))
 
 
-def test_can_explicitly_set_join_query_between_sqlalchemy_objects():
+def test_can_explicitly_set_join_query_between_sqlalchemy_objects(engine):
     Base = declarative_base()
 
     class AuthorRecord(Base):
@@ -246,13 +244,11 @@ def test_can_explicitly_set_join_query_between_sqlalchemy_objects():
     class Root(RootType):
         authors = many(lambda: select(Author))
 
-    engine = create_engine("sqlite:///:memory:")
-
     Base.metadata.create_all(engine)
 
     session = Session(engine)
-    session.add(AuthorRecord(c_name="PG Wodehouse"))
-    session.add(AuthorRecord(c_name="Joseph Heller"))
+    session.add(AuthorRecord(c_id=1, c_name="PG Wodehouse"))
+    session.add(AuthorRecord(c_id=2, c_name="Joseph Heller"))
     session.add(BookRecord(c_title="Leave It to Psmith", c_author_id=1))
     session.add(BookRecord(c_title="Catch-22", c_author_id=2))
     session.commit()
@@ -271,51 +267,7 @@ def test_can_explicitly_set_join_query_between_sqlalchemy_objects():
     }))
 
 
-def test_can_explicitly_set_primary_key():
-    Base = declarative_base()
-
-    class AuthorRecord(Base):
-        __tablename__ = "author"
-
-        c_id = Column(Integer, primary_key=True)
-        c_name = Column(Unicode, nullable=False)
-
-    class Author(SqlAlchemyObjectType):
-        __model__ = AuthorRecord
-
-        @staticmethod
-        def __primary_key__():
-            return [AuthorRecord.c_name]
-
-        name = column_field(AuthorRecord.c_name)
-
-    class Root(RootType):
-        authors = many(lambda: select(Author))
-
-    engine = create_engine("sqlite:///:memory:")
-
-    Base.metadata.create_all(engine)
-
-    session = Session(engine)
-    session.add(AuthorRecord(c_name="PG Wodehouse"))
-    session.add(AuthorRecord(c_name="PG Wodehouse"))
-    session.add(AuthorRecord(c_name="Joseph Heller"))
-    session.commit()
-
-    result = executor(Root)("""{
-        authors {
-            name
-        }
-    }""", context=QueryContext(session=session))
-    assert_that(result, is_successful_result(data=has_entries({
-        "authors": contains_inanyorder(
-            {"name": "PG Wodehouse"},
-            {"name": "Joseph Heller"},
-        ),
-    })))
-
-
-def test_polymorphic_type_is_filtered_by_discriminator_when_there_are_no_polymorphic_fields_selected():
+def test_polymorphic_type_is_filtered_by_discriminator_when_there_are_no_polymorphic_fields_selected(engine):
     Base = declarative_base()
 
     class PersonRecord(Base):
@@ -345,8 +297,6 @@ def test_polymorphic_type_is_filtered_by_discriminator_when_there_are_no_polymor
     class Root(RootType):
         authors = many(lambda: select(Author))
 
-    engine = create_engine("sqlite:///:memory:")
-
     Base.metadata.create_all(engine)
 
     session = Session(engine)
@@ -368,7 +318,7 @@ def test_polymorphic_type_is_filtered_by_discriminator_when_there_are_no_polymor
     }))
 
 
-def test_column_field_can_be_marked_as_internal():
+def test_column_field_can_be_marked_as_internal(engine):
     Base = declarative_base()
 
     class AuthorRecord(Base):
@@ -380,17 +330,11 @@ def test_column_field_can_be_marked_as_internal():
     class Author(SqlAlchemyObjectType):
         __model__ = AuthorRecord
 
-        @staticmethod
-        def __primary_key__():
-            return [AuthorRecord.c_name]
-
         id = column_field(AuthorRecord.c_id, internal=True)
         name = column_field(AuthorRecord.c_name)
 
     class Root(RootType):
         authors = many(lambda: select(Author))
-
-    engine = create_engine("sqlite:///:memory:")
 
     Base.metadata.create_all(engine)
 
@@ -405,106 +349,6 @@ def test_column_field_can_be_marked_as_internal():
             has_string(starts_with('Cannot query field "id"')),
         )),
     )
-
-
-def test_distinct_rows_are_fetched_based_on_primary_key():
-    Base = declarative_base()
-
-    class LabelRecord(Base):
-        __tablename__ = "author"
-
-        c_id = Column(Integer, primary_key=True)
-        c_label = Column(Unicode, nullable=False)
-
-    class Label(SqlAlchemyObjectType):
-        __model__ = LabelRecord
-
-        @classmethod
-        def __select_all__(cls):
-            two_values = sqlalchemy.orm.Query(sqlalchemy.union(
-                    sqlalchemy.select([1]),
-                    sqlalchemy.select([2]),
-                )).subquery()
-            
-            return super(Label, cls).__select_all__() \
-                .join(two_values, sqlalchemy.literal(True))
-
-        id = column_field(LabelRecord.c_id)
-        label = column_field(LabelRecord.c_label)
-
-    class Root(RootType):
-        labels = many(lambda: select(Label))
-
-    engine = create_engine("sqlite:///:memory:")
-
-    Base.metadata.create_all(engine)
-
-    session = Session(engine)
-    session.add(LabelRecord(c_id=1, c_label="First"))
-    session.add(LabelRecord(c_id=2, c_label="Second"))
-    session.add(LabelRecord(c_id=3, c_label="Second"))
-    session.commit()
-
-    result = executor(Root)("""{
-        labels {
-            label
-        }
-    }""", context=QueryContext(session=session))
-    assert_that(result, is_successful_result(data={
-        "labels": [
-            {"label": "First"},
-            {"label": "Second"},
-            {"label": "Second"},
-        ],
-    }))
-
-
-def test_distinct_on_is_preserved_when_fetching_immediates():
-    # TODO: set up PostgreSQL tests to get this working
-    return
-    Base = declarative_base()
-
-    class LabelRecord(Base):
-        __tablename__ = "author"
-
-        c_id = Column(Integer, primary_key=True)
-        c_label = Column(Unicode, nullable=False)
-
-    class Label(SqlAlchemyObjectType):
-        __model__ = LabelRecord
-
-        @classmethod
-        def __select_all__(cls):
-            return super(Label, cls).__select_all__() \
-                .distinct(LabelRecord.c_label) \
-                .order_by(LabelRecord.c_label, LabelRecord.c_id.desc())
-
-        id = column_field(LabelRecord.c_id)
-        label = column_field(LabelRecord.c_label)
-
-    class Root(RootType):
-        labels = many(lambda: select(Label))
-
-    engine = create_engine("sqlite:///:memory:")
-
-    Base.metadata.create_all(engine)
-
-    session = Session(engine)
-    session.add(LabelRecord(c_id=1, c_label="First"))
-    session.add(LabelRecord(c_id=2, c_label="Second"))
-    session.commit()
-
-    result = executor(Root)("""{
-        labels {
-            id
-            label
-        }
-    }""", context=QueryContext(session=session))
-    assert_that(result, is_successful_result(data={
-        "labels": [
-            {"id": 2, "label": "Second"},
-        ],
-    }))
 
 
 def test_type_of_field_is_determined_from_type_of_column():
@@ -724,3 +568,46 @@ class TestFindJoinCandidates(object):
             list(_find_join_candidates(Author, Book)),
             equal_to([(Author.__dict__["id"], Book.__dict__["author_id"])]),
         )
+
+
+@pytest.fixture(name="engine", params=("postgresql", "sqlite"))
+def fixture_engine(request):
+    engine_factories = {
+        "postgresql": _create_postgresql_engine,
+        "sqlite": _create_sqlite_engine,
+    }
+    return engine_factories[request.param]()
+
+
+@pytest.fixture(name="postgresql_engine")
+def fixture_postgresql_engine():
+    return _create_postgresql_engine()
+
+
+def _create_postgresql_engine():
+    url = os.environ["TEST_POSTGRESQL_URL"]
+    try:
+        import psycopg2
+        assert psycopg2
+    except ImportError:
+        import psycopg2cffi
+        assert psycopg2cffi
+        url = sqlalchemy.engine.url.make_url(url)
+        url.drivername = "postgresql+psycopg2cffi"
+
+    engine = create_engine(url, poolclass=sqlalchemy.pool.StaticPool)
+    engine.execute("SET search_path TO pg_temp")
+
+    @sqlalchemy.event.listens_for(engine, "engine_connect")
+    def set_search_path(connection, branch):
+        connection.execute("SET search_path TO pg_temp")
+
+    return engine
+
+
+def _create_sqlite_engine():
+    return create_engine("sqlite:///:memory:")
+
+
+
+
