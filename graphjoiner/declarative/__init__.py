@@ -414,6 +414,26 @@ class InputObjectTypeMeta(TypeMeta):
         fields = lazy(fields)
         cls.__fields__ = staticmethod(lambda: list(field_definitions))
 
+        def __init__(self, **kwargs):
+            attrs_cls_attrs = dict(
+                raw_=attr.attrib(default=undefined),
+                **dict(
+                    (field.attr_name, attr.attrib(default=getattr(field, "default", undefined)))
+                    for field in fields().values()
+                )
+            )
+
+            attrs_cls = attr.make_class(
+                name=cls.__class__.__name__,
+                attrs=attrs_cls_attrs,
+                cmp=False,
+                slots=True,
+                frozen=True,
+            )
+
+            return attrs_cls.__init__(self, **kwargs)
+
+        cls.__init__ = __init__
 
         cls.__graphql__ = GraphQLInputObjectType(
             name=cls.__name__,
@@ -422,24 +442,6 @@ class InputObjectTypeMeta(TypeMeta):
                 for key, field in six.iteritems(fields())
             ),
         )
-
-        def __init__(self, **kwargs):
-            attr.attrs(
-                these=dict(
-                    raw_=attr.attrib(default=undefined),
-                    **dict(
-                        (field.attr_name, attr.attrib(default=getattr(field, "default", undefined)))
-                        for field in fields().values()
-                    )
-                ),
-                cmp=False,
-                slots=True,
-                frozen=True,
-            )(cls)
-            return cls.__init__(self, **kwargs)
-
-        cls.__init__ = __init__
-
 
         @staticmethod
         def read_arg_value(value):
