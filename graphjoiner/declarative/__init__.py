@@ -4,7 +4,6 @@ import inspect
 import re
 import types
 
-import attr
 import graphql
 from graphql import GraphQLArgument, GraphQLInputObjectType, GraphQLInterfaceType, GraphQLList, GraphQLNonNull
 import six
@@ -424,19 +423,10 @@ class InputObjectTypeMeta(TypeMeta):
         )
 
         def __init__(self, **kwargs):
-            attr.attrs(
-                these=dict(
-                    raw_=attr.attrib(default=undefined),
-                    **dict(
-                        (field.attr_name, attr.attrib(default=getattr(field, "default", undefined)))
-                        for field in fields().values()
-                    )
-                ),
-                cmp=False,
-                slots=True,
-                frozen=True,
-            )(cls)
-            return cls.__init__(self, **kwargs)
+            self.raw_ = kwargs.pop("raw_", undefined)
+            for field in fields().values():
+                default = getattr(field, "default", undefined)
+                setattr(self, field.attr_name, kwargs.pop(field.attr_name, default))
 
         cls.__init__ = __init__
 
