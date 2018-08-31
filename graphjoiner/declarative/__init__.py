@@ -431,9 +431,17 @@ class InputObjectTypeMeta(TypeMeta):
             for key in kwargs:
                 raise TypeError("__init__() got an unexpected keyword argument '{}'".format(key))
 
-
         cls.__init__ = __init__
 
+        def __repr__(self):
+            fields_repr = ", ".join(
+                "{}={}".format(field.attr_name, repr(getattr(self, field.attr_name)))
+                for field in fields().values()
+            )
+            return "{}({})".format(cls.__name__, fields_repr)
+
+
+        cls.__repr__ = __repr__
 
         @staticmethod
         def read_arg_value(value):

@@ -845,6 +845,13 @@ class TestInputObjectType(object):
         error = pytest.raises(TypeError, lambda: AuthorSelection(year=1969, name="Bob"))
         assert_that(str(error.value), equal_to("__init__() got an unexpected keyword argument 'year'"))
 
+    def test_str_of_input_objects_shows_name_and_fields(self):
+        class Range(InputObjectType):
+            start = field(type=Int)
+            end = field(type=Int)
+
+        assert_that(str(Range(start=1, end=42)), equal_to("Range(end=42, start=1)"))
+
 
 def test_undefined_is_falsey():
     assert_that(bool(undefined), equal_to(False))
