@@ -1,7 +1,6 @@
 import collections
 from copy import copy
 
-from attr import attrs, attrib
 from graphql.language import ast as ast_types
 from graphql.execution.values import get_argument_values
 from graphql.type.directives import GraphQLIncludeDirective, GraphQLSkipDirective
@@ -10,20 +9,32 @@ from six.moves import filter
 from .util import find, single
 
 
-@attrs
 class DocumentRequest(object):
-    query = attrib()
-    schema_query = attrib()
+    def __init__(self, query, schema_query):
+        self.query = query
+        self.schema_query = schema_query
 
 
-@attrs
 class Request(object):
-    key = attrib()
-    field = attrib()
-    args = attrib(default={})
-    selections = attrib(default=[])
-    join_selections = attrib(default=[])
-    context = attrib(default=None)
+    def __init__(self, key, field, args, selections, join_selections, context):
+        self.key = key
+        self.field = field
+        self.args = args
+        self.selections = selections
+        self.join_selections = join_selections
+        self.context = context
+
+    def copy(self, **kwargs):
+        attrs = dict(
+            key=self.key,
+            field=self.field,
+            args=self.args,
+            selections=self.selections,
+            join_selections=self.join_selections,
+            context=self.context,
+        )
+        attrs.update(**kwargs)
+        return Request(**attrs)
 
 
 def request_from_graphql_document(document, query_root, mutation_root, context, variables):
@@ -82,6 +93,7 @@ def request_from_graphql_ast(ast, root, context, variables, field, fragments):
         field=field,
         args=args,
         selections=selections,
+        join_selections=(),
         context=context,
     )
 

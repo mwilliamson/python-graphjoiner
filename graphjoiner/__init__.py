@@ -2,7 +2,6 @@ import abc
 import collections
 from itertools import groupby
 
-from attr import assoc
 from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLNonNull, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
 from graphql.execution.values import get_variable_values
@@ -185,7 +184,7 @@ class Relationship(FieldBase):
     def parent_join_selections(self, parent):
         fields = parent.fields()
         return [
-            Request(field=fields[field_name], key=key)
+            _request_field(field=fields[field_name], key=key)
             for field_name, key in zip(self.join.keys(), self._parent_join_keys)
         ]
 
@@ -193,11 +192,11 @@ class Relationship(FieldBase):
         query = self.build_query(request.args, parent_query, request.context)
         join_fields = self.target.join_fields()
         join_selections = [
-            Request(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
+            _request_field(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
             for child_key in self.join.values()
         ]
 
-        child_request = assoc(request, join_selections=join_selections)
+        child_request = request.copy(join_selections=join_selections)
         results = self.target.fetch(child_request, query)
         return RelationshipResults(
             results=results,
@@ -336,8 +335,15 @@ class ScalarJoinType(Value):
         return self._target.join_fields()
 
     def fetch(self, request, query):
-        field_request = Request(key=self._field_name, field=self._field, selections=request.selections, context=request.context)
-        results = self._target.fetch(assoc(request, selections=[field_request]), query)
+        field_request = Request(
+            key=self._field_name,
+            field=self._field,
+            selections=request.selections,
+            context=request.context,
+            join_selections=(),
+            args={},
+        )
+        results = self._target.fetch(request.copy(selections=[field_request]), query)
         return [
             Result(value=result.value[self._field_name], join_values=result.join_values)
             for result in results
@@ -429,3 +435,14 @@ def _nullable(graphql_type):
         return graphql_type.of_type
     else:
         return graphql_type
+
+
+def _request_field(field, key):
+    return Request(
+        field=field,
+        key=key,
+        args={},
+        selections=(),
+        join_selections=(),
+        context=None,
+    )
