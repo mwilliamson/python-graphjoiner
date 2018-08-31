@@ -17,7 +17,7 @@ setup(
     url='http://github.com/healx/python-graphjoiner',
     packages=['graphjoiner', 'graphjoiner.declarative'],
     keywords="graphql graph join ",
-    install_requires=["graphql-core>=2.0,<3.0", "attrs>=16.1.0,<17", "six"],
+    install_requires=["graphql-core>=2.0,<3.0", "attrs>=17,<=18.1.0", "six"],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

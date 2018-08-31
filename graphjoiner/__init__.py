@@ -2,7 +2,7 @@ import abc
 import collections
 from itertools import groupby
 
-from attr import assoc
+from attr import evolve
 from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLNonNull, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
 from graphql.execution.values import get_variable_values
@@ -197,7 +197,7 @@ class Relationship(FieldBase):
             for child_key in self.join.values()
         ]
 
-        child_request = assoc(request, join_selections=join_selections)
+        child_request = evolve(request, join_selections=join_selections)
         results = self.target.fetch(child_request, query)
         return RelationshipResults(
             results=results,
@@ -337,7 +337,7 @@ class ScalarJoinType(Value):
 
     def fetch(self, request, query):
         field_request = Request(key=self._field_name, field=self._field, selections=request.selections, context=request.context)
-        results = self._target.fetch(assoc(request, selections=[field_request]), query)
+        results = self._target.fetch(evolve(request, selections=[field_request]), query)
         return [
             Result(value=result.value[self._field_name], join_values=result.join_values)
             for result in results
