@@ -832,6 +832,19 @@ class TestInputObjectType(object):
             has_properties(name_starts_with=undefined),
         )
 
+    def test_passing_extra_positional_arguments_raises_an_error(self):
+        class AuthorSelection(InputObjectType):
+            name = field(type=String)
+
+        pytest.raises(TypeError, lambda: AuthorSelection(1969, name="Bob"))
+
+    def test_passing_extra_keyword_arguments_raises_an_error(self):
+        class AuthorSelection(InputObjectType):
+            name = field(type=String)
+
+        error = pytest.raises(TypeError, lambda: AuthorSelection(year=1969, name="Bob"))
+        assert_that(str(error.value), equal_to("__init__() got an unexpected keyword argument 'year'"))
+
 
 def test_undefined_is_falsey():
     assert_that(bool(undefined), equal_to(False))

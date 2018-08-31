@@ -428,6 +428,10 @@ class InputObjectTypeMeta(TypeMeta):
                 default = getattr(field, "default", undefined)
                 setattr(self, field.attr_name, kwargs.pop(field.attr_name, default))
 
+            for key in kwargs:
+                raise TypeError("__init__() got an unexpected keyword argument '{}'".format(key))
+
+
         cls.__init__ = __init__
 
 
