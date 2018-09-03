@@ -16,12 +16,28 @@ class DocumentRequest(object):
 
 
 class Request(object):
-    def __init__(self, key, field, args, selections, join_selections, context):
+    def __init__(self, key, field, args=None, selections=None, join_selections=None, context=None):
         self.key = key
         self.field = field
-        self.args = args
-        self.selections = selections
-        self.join_selections = join_selections
+
+        if args is None:
+            _args = {}
+        else:
+            _args = args
+
+        if selections is None:
+            _selections = []
+        else:
+            _selections = selections
+
+        if join_selections is None:
+            _join_selections = []
+        else:
+            _join_selections = join_selections
+
+        self.args = _args
+        self.selections = _selections
+        self.join_selections = _join_selections
         self.context = context
 
     def copy(self, **kwargs):
