@@ -384,7 +384,7 @@ class JoinType(Value):
                     (key, read(row[immediate_slice]))
                     for key, immediate_slice, read in readers
                 ),
-                tuple(row[len(immediate_selections):]),
+                row[len(immediate_selections):],
             )
     
         return [
