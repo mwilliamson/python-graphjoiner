@@ -561,3 +561,44 @@ class List(InputType):
     @property
     def __graphql__(self):
         return GraphQLList(_to_graphql_core_type(self.of_type))
+
+
+Selection = graphjoiner.ImmediateSelection
+
+
+def define_field(field):
+    return CustomFieldDefinition(field)
+    
+
+class CustomFieldDefinition(FieldDefinition):
+    def __init__(self, field):
+        self._field = field
+
+    def instantiate(self):
+        return CustomField(field=self._field)
+
+
+class CustomField(graphjoiner.Field):
+    def __init__(self, field):
+        self._field = field
+
+        target = self._field.type
+
+        while isinstance(target, (List, NonNull)):
+            target = target.of_type
+
+        self.target = getattr(target, "__graphjoiner__", target)
+
+        self.type = getattr(self._field.type, "__graphql__", self._field.type)
+
+    def immediate_selections(self, parent, selection):
+        return [
+            Selection(
+                args=immediate_selection.args,
+                field=immediate_selection.field.field(),
+            )
+            for immediate_selection in self._field.immediate_selections(parent, selection)
+        ]
+
+    def create_reader(self, selection, query, context):
+        return self._field.create_reader(selection, query, context)

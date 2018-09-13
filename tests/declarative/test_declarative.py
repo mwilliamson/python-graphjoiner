@@ -5,6 +5,7 @@ import pytest
 
 from graphjoiner.declarative import (
     Boolean,
+    define_field,
     executor,
     extract,
     field,
@@ -22,6 +23,7 @@ from graphjoiner.declarative import (
     RootType,
     NonNull,
     ObjectType,
+    Selection,
     InterfaceType,
     select,
     String,
@@ -251,6 +253,47 @@ def test_can_extract_fields_from_relationships_using_field():
     result = executor(Root)("{ authorNames }")
     assert_that(result, is_successful_result(data={
         "authorNames": ["PG Wodehouse", "Joseph Heller"],
+    }))
+
+
+def test_can_define_custom_fields():
+    AuthorRecord = attr.make_class("AuthorRecord", ["name"])
+
+    class DoubleField(object):
+        def __init__(self, field, type):
+            self._field = field
+            self.type = type
+        
+        def immediate_selections(self, parent, selection):
+            return (Selection(field=self._field, args={}), )
+        
+        def create_reader(self, selection, query, context):
+            def read(immediates):
+                return immediates[0] * 2
+            
+            return read
+
+    def double_field(field, type):
+        return define_field(DoubleField(
+            field=field,
+            type=type,
+        ))
+
+    class Author(StaticDataObjectType):
+        __records__ = [AuthorRecord("PG Wodehouse"), AuthorRecord("Joseph Heller")]
+
+        name = field(type=String)
+        name_2 = double_field(name, type=String)
+
+    class Root(RootType):
+        authors = many(lambda: StaticDataObjectType.select(Author))
+
+    result = executor(Root)("{ authors { name2 } }")
+    assert_that(result, is_successful_result(data={
+        "authors": [
+            {"name2": "PG WodehousePG Wodehouse"},
+            {"name2": "Joseph HellerJoseph Heller"},
+        ],
     }))
 
 
