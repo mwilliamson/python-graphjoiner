@@ -124,7 +124,7 @@ class Field(FieldBase):
 
     def immediate_selections(self, parent, selection):
         return (_request_to_immediate_selection(selection), )
-    
+
     def create_reader(self, request, parent_query, context):
         return lambda immediates: immediates[0]
 
@@ -161,8 +161,6 @@ class Relationship(FieldBase):
         self._process_results = process_results
         self._wrap_type = wrap_type
         self.internal = internal
-
-        self._parent_join_keys = tuple("_graphjoiner_joinToChildrenKey_" + parent_key for parent_key in self.join.keys())
 
     def copy(self, target=None, build_query=None, join=None, args=None, internal=None):
         if target is None:
@@ -203,12 +201,12 @@ class Relationship(FieldBase):
 
         child_request = request.copy(join_selections=join_selections)
         results = self.target.fetch(child_request, query, context=context)
-        
+
         indexed_results = to_multidict(
             (result.join_values, result.value)
             for result in results
         )
-        
+
         return lambda immediates: self._process_results(indexed_results.get(immediates, []))
 
     def to_graphql_field(self):
@@ -361,7 +359,7 @@ class JoinType(Value):
     def fetch(self, request, query, context):
         immediate_selections = []
         immediate_slices = []
-        
+
         for selection in request.selections:
             immediate_selections_for_field = selection.field.immediate_selections(self, selection)
             immediate_slices.append(slice(
@@ -369,15 +367,15 @@ class JoinType(Value):
                 len(immediate_selections) + len(immediate_selections_for_field),
             ))
             immediate_selections += immediate_selections_for_field
-            
+
         rows = self._fetch_immediates(tuple(immediate_selections) + tuple(request.join_selections), query, context)
-        
+
         readers = []
-        
+
         for selection, immediate_slice in zip(request.selections, immediate_slices):
             reader = selection.field.create_reader(selection, query, context)
             readers.append((selection.key, immediate_slice, reader))
-        
+
         def read_row(row):
             return Result(
                 dict(
@@ -386,7 +384,7 @@ class JoinType(Value):
                 ),
                 row[len(immediate_selections):],
             )
-    
+
         return [
             read_row(row)
             for row in rows
@@ -422,8 +420,8 @@ class ImmediateSelection(object):
     def __init__(self, field, args):
         self.field = field
         self.args = args
-        
-        
+
+
 def _request_field(field):
     return ImmediateSelection(
         field=field,
