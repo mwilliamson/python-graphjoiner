@@ -568,7 +568,7 @@ Selection = graphjoiner.ImmediateSelection
 
 def define_field(field):
     return CustomFieldDefinition(field)
-    
+
 
 class CustomFieldDefinition(FieldDefinition):
     def __init__(self, field):
@@ -589,7 +589,7 @@ class CustomField(graphjoiner.Field):
 
         self.target = getattr(target, "__graphjoiner__", target)
 
-        self.type = getattr(self._field.type, "__graphql__", self._field.type)
+        self.type = _to_graphql_core_type(self._field.type)
 
     def immediate_selections(self, parent, selection):
         return [
