@@ -1,6 +1,5 @@
 import abc
 import collections
-from itertools import groupby
 
 from graphql import GraphQLError, GraphQLField, GraphQLInputObjectField, GraphQLNonNull, GraphQLObjectType, GraphQLList, GraphQLSchema
 from graphql.execution import execute as graphql_execute, ExecutionResult
@@ -12,7 +11,7 @@ import six
 
 from .requests import request_from_graphql_ast, request_from_graphql_document, Request, field_key
 from .schemas import is_subtype
-from .util import partition, unique
+from .util import to_multidict
 
 
 def executor(root, mutation=None):
@@ -123,6 +122,12 @@ class Field(FieldBase):
         for key, value in six.iteritems(kwargs):
             setattr(self, key, value)
 
+    def immediate_selections(self, parent, selection):
+        return (selection, )
+    
+    def create_reader(self, request, parent_query, context):
+        return lambda immediates: immediates[0]
+
     def to_graphql_field(self):
         return GraphQLField(
             type=self.type,
@@ -181,28 +186,30 @@ class Relationship(FieldBase):
             internal=internal,
         )
 
-    def parent_join_selections(self, parent):
+    def immediate_selections(self, parent, selection):
         fields = parent.fields()
         return [
-            _request_field(field=fields[field_name], key=key)
-            for field_name, key in zip(self.join.keys(), self._parent_join_keys)
+            _request_field(field=fields[field_name])
+            for field_name in self.join.keys()
         ]
 
-    def fetch(self, request, parent_query, context):
+    def create_reader(self, request, parent_query, context):
         query = self.build_query(request.args, parent_query, context)
         join_fields = self.target.join_fields()
         join_selections = [
-            _request_field(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
+            _request_field(field=join_fields[child_key])
             for child_key in self.join.values()
         ]
 
         child_request = request.copy(join_selections=join_selections)
         results = self.target.fetch(child_request, query, context=context)
-        return RelationshipResults(
-            results=results,
-            process_results=self._process_results,
-            parent_join_keys=self._parent_join_keys,
+        
+        indexed_results = to_multidict(
+            (result.join_values, result.value)
+            for result in results
         )
+        
+        return lambda immediates: self._process_results(indexed_results.get(immediates, []))
 
     def to_graphql_field(self):
         # TODO: differentiate between root and non-root types properly
@@ -217,30 +224,13 @@ class Relationship(FieldBase):
                     field=self,
                     fragments=info.fragments,
                 )
-                return self.fetch(request, None, context=info.context).get(())
+                return self.create_reader(request, None, context=info.context)(())
 
         return GraphQLField(
             type=self._wrap_type(self.target.to_graphql_type()),
             resolver=resolve,
             args=self.args,
         )
-
-
-class RelationshipResults(object):
-    def __init__(self, results, process_results, parent_join_keys):
-        key_func = lambda result: result.join_values
-        self._results = dict(
-            (key, [result.value for result in results])
-            for key, results in groupby(sorted(results, key=key_func), key=key_func)
-        )
-        self._process_results = process_results
-        self._parent_join_keys = parent_join_keys
-
-    def _parent_join_values(self, parent):
-        return tuple(parent[join_field] for join_field in self._parent_join_keys)
-
-    def get(self, key):
-        return self._process_results(self._results.get(self._parent_join_values(key), []))
 
 
 def single(target, build_query, **kwargs):
@@ -372,41 +362,37 @@ class JoinType(Value):
         return self.fields()
 
     def fetch(self, request, query, context):
-        (relationship_selections, requested_immediate_selections) = partition(
-            lambda selection: isinstance(selection.field, Relationship),
-            request.selections,
-        )
-
-        join_to_children_selections = [
-            parent_join_selection
-            for selection in relationship_selections
-            for parent_join_selection in selection.field.parent_join_selections(self)
-        ]
-
-        immediate_selections = unique(
-            requested_immediate_selections + list(request.join_selections) + join_to_children_selections,
-            key=lambda selection: selection.key,
-        )
-
-
-        keys = tuple(selection.key for selection in immediate_selections)
-
-        results = [
-            dict(zip(keys, row))
-            for row in self._fetch_immediates(immediate_selections, query, context)
-        ]
-
-        for selection in relationship_selections:
-            children = selection.field.fetch(selection, query, context)
-            for result in results:
-                result[selection.key] = children.get(result)
-
-        return [
-            Result(
-                dict((selection.key, result[selection.key]) for selection in request.selections),
-                tuple(result[selection.key] for selection in request.join_selections),
+        immediate_selections = []
+        immediate_slices = []
+        
+        for selection in request.selections:
+            immediate_selections_for_field = selection.field.immediate_selections(self, selection)
+            immediate_slices.append(slice(
+                len(immediate_selections),
+                len(immediate_selections) + len(immediate_selections_for_field),
+            ))
+            immediate_selections += immediate_selections_for_field
+            
+        rows = self._fetch_immediates(tuple(immediate_selections) + tuple(request.join_selections), query, context)
+        
+        readers = []
+        
+        for selection, immediate_slice in zip(request.selections, immediate_slices):
+            reader = selection.field.create_reader(selection, query, context)
+            readers.append((selection.key, immediate_slice, reader))
+        
+        def read_row(row):
+            return Result(
+                dict(
+                    (key, read(row[immediate_slice]))
+                    for key, immediate_slice, read in readers
+                ),
+                tuple(row[len(immediate_selections):]),
             )
-            for result in results
+    
+        return [
+            read_row(row)
+            for row in rows
         ]
 
     def to_graphql_type(self):
@@ -435,10 +421,10 @@ def _nullable(graphql_type):
         return graphql_type
 
 
-def _request_field(field, key):
+def _request_field(field):
     return Request(
         field=field,
-        key=key,
+        key=None,
         args={},
         selections=(),
         join_selections=(),

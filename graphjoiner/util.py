@@ -24,6 +24,18 @@ def find(predicate, values):
             return value
 
 
+def to_multidict(iterable):
+    result = {}
+
+    for key, value in iterable:
+        if key not in result:
+            result[key] = []
+
+        result[key].append(value)
+
+    return result
+
+
 def unique(values, key):
     result = []
     seen = set()

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from hamcrest import assert_that
 
 from .matchers import is_successful_result

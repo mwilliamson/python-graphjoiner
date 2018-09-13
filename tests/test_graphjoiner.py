@@ -37,7 +37,7 @@ def fetch_immediates_from_obj(selections, objs, context):
     ]
 
     def read_obj(obj):
-        return [getattr(obj, attr) for attr in requested_attrs]
+        return tuple(getattr(obj, attr) for attr in requested_attrs)
 
     return list(map(read_obj, objs))
 
