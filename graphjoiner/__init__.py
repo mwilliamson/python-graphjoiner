@@ -156,7 +156,7 @@ class Relationship(FieldBase):
     def __init__(self, target, process_results, wrap_type, build_query, join, args, internal):
         self.target = target
         self._build_query = build_query
-        self.join = join
+        self._join = join
         self.args = args
         self._process_results = process_results
         self._wrap_type = wrap_type
@@ -168,7 +168,7 @@ class Relationship(FieldBase):
         if build_query is None:
             build_query = self._build_query
         if join is None:
-            join = self.join
+            join = self._join
         if args is None:
             args = self.args
         if internal is None:
@@ -188,7 +188,7 @@ class Relationship(FieldBase):
         fields = parent.fields()
         return [
             _request_field(field=fields[field_name])
-            for field_name in self.join.keys()
+            for field_name in self._join.keys()
         ]
 
     def create_reader(self, request, parent_query, context):
@@ -196,7 +196,7 @@ class Relationship(FieldBase):
         join_fields = self.target.join_fields()
         join_selections = [
             _request_field(field=join_fields[child_key])
-            for child_key in self.join.values()
+            for child_key in self._join.values()
         ]
 
         child_request = request.copy(join_selections=join_selections)
@@ -211,7 +211,7 @@ class Relationship(FieldBase):
 
     def to_graphql_field(self):
         # TODO: differentiate between root and non-root types properly
-        if self.join:
+        if self._join:
             resolve = _resolve_fetched_field
         else:
             def resolve(source, info, **args):
