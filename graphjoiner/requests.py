@@ -108,7 +108,9 @@ def field_key(ast):
 
 
 def _graphql_selections(ast, root, variables, fragments):
-    if ast.selection_set:
+    if ast.selection_set is None:
+        return None
+    else:
         fields = root.fields()
 
         field_selections = _merge_fields(_collect_fields(ast, fragments=fragments, variables=variables))
@@ -123,8 +125,6 @@ def _graphql_selections(ast, root, variables, fragments):
             for selection in field_selections
             if _field_name(selection) != "__schema"
         ]
-    else:
-        return []
 
 
 def _collect_fields(ast, fragments, variables):
