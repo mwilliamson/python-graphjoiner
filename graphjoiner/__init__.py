@@ -75,8 +75,8 @@ def _execute(schema, root, query, context=None, variables=None, mutation=None):
         # request.
         #
         # See: https://github.com/graphql-python/graphql-core/issues/118
-        request = request_from_graphql_document(ast, root, mutation_root=mutation, context=context, variables=variables)
-        data = root.fetch(request.query, None)[0].value
+        request = request_from_graphql_document(ast, root, mutation_root=mutation, variables=variables)
+        data = root.fetch(request.query, None, context=context)[0].value
 
         if request.schema_query is not None:
             schema_result = graphql_execute(
@@ -188,8 +188,8 @@ class Relationship(FieldBase):
             for field_name, key in zip(self.join.keys(), self._parent_join_keys)
         ]
 
-    def fetch(self, request, parent_query):
-        query = self.build_query(request.args, parent_query, request.context)
+    def fetch(self, request, parent_query, context):
+        query = self.build_query(request.args, parent_query, context)
         join_fields = self.target.join_fields()
         join_selections = [
             _request_field(key="_graphjoiner_joinToParentKey_" + child_key, field=join_fields[child_key])
@@ -197,7 +197,7 @@ class Relationship(FieldBase):
         ]
 
         child_request = request.copy(join_selections=join_selections)
-        results = self.target.fetch(child_request, query)
+        results = self.target.fetch(child_request, query, context=context)
         return RelationshipResults(
             results=results,
             process_results=self._process_results,
@@ -213,12 +213,11 @@ class Relationship(FieldBase):
                 request = request_from_graphql_ast(
                     info.field_asts[0],
                     self.target,
-                    context=info.context,
                     variables=info.variable_values,
                     field=self,
                     fragments=info.fragments,
                 )
-                return self.fetch(request, None).get(())
+                return self.fetch(request, None, context=info.context).get(())
 
         return GraphQLField(
             type=self._wrap_type(self.target.to_graphql_type()),
@@ -334,16 +333,15 @@ class ScalarJoinType(Value):
     def join_fields(self):
         return self._target.join_fields()
 
-    def fetch(self, request, query):
+    def fetch(self, request, query, context):
         field_request = Request(
             key=self._field_name,
             field=self._field,
             selections=request.selections,
-            context=request.context,
             join_selections=(),
             args={},
         )
-        results = self._target.fetch(request.copy(selections=[field_request]), query)
+        results = self._target.fetch(request.copy(selections=[field_request]), query, context=context)
         return [
             Result(value=result.value[self._field_name], join_values=result.join_values)
             for result in results
@@ -373,7 +371,7 @@ class JoinType(Value):
     def join_fields(self):
         return self.fields()
 
-    def fetch(self, request, query):
+    def fetch(self, request, query, context):
         (relationship_selections, requested_immediate_selections) = partition(
             lambda selection: isinstance(selection.field, Relationship),
             request.selections,
@@ -395,11 +393,11 @@ class JoinType(Value):
 
         results = [
             dict(zip(keys, row))
-            for row in self._fetch_immediates(immediate_selections, query, request.context)
+            for row in self._fetch_immediates(immediate_selections, query, context)
         ]
 
         for selection in relationship_selections:
-            children = selection.field.fetch(selection, query)
+            children = selection.field.fetch(selection, query, context)
             for result in results:
                 result[selection.key] = children.get(result)
 
@@ -444,5 +442,4 @@ def _request_field(field, key):
         args={},
         selections=(),
         join_selections=(),
-        context=None,
     )

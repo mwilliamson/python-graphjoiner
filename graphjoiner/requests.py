@@ -16,13 +16,12 @@ class DocumentRequest(object):
 
 
 class Request(object):
-    def __init__(self, key, field, args, selections, join_selections, context):
+    def __init__(self, key, field, args, selections, join_selections):
         self.key = key
         self.field = field
         self.args = args
         self.selections = selections
         self.join_selections = join_selections
-        self.context = context
 
     def copy(self, **kwargs):
         attrs = dict(
@@ -31,13 +30,12 @@ class Request(object):
             args=self.args,
             selections=self.selections,
             join_selections=self.join_selections,
-            context=self.context,
         )
         attrs.update(**kwargs)
         return Request(**attrs)
 
 
-def request_from_graphql_document(document, query_root, mutation_root, context, variables):
+def request_from_graphql_document(document, query_root, mutation_root, variables):
     fragments = dict(
         (definition.name.value, definition)
         for definition in document.definitions
@@ -70,12 +68,12 @@ def request_from_graphql_document(document, query_root, mutation_root, context, 
         schema_query.definitions[definition_index] = schema_query_definition
 
     return DocumentRequest(
-        query=request_from_graphql_ast(operation, root, context=context, variables=variables, fragments=fragments, field=None),
+        query=request_from_graphql_ast(operation, root, variables=variables, fragments=fragments, field=None),
         schema_query=schema_query,
     )
 
 
-def request_from_graphql_ast(ast, root, context, variables, field, fragments):
+def request_from_graphql_ast(ast, root, variables, field, fragments):
     if isinstance(ast, ast_types.Field):
         key = field_key(ast)
     else:
@@ -86,7 +84,7 @@ def request_from_graphql_ast(ast, root, context, variables, field, fragments):
     else:
         args = get_argument_values(field.args, getattr(ast, "arguments", []), variables=variables)
 
-    selections = _graphql_selections(ast, root, context=context, variables=variables, fragments=fragments)
+    selections = _graphql_selections(ast, root, variables=variables, fragments=fragments)
 
     return Request(
         key=key,
@@ -94,7 +92,6 @@ def request_from_graphql_ast(ast, root, context, variables, field, fragments):
         args=args,
         selections=selections,
         join_selections=(),
-        context=context,
     )
 
 
@@ -110,7 +107,7 @@ def field_key(ast):
 
 
 
-def _graphql_selections(ast, root, context, variables, fragments):
+def _graphql_selections(ast, root, variables, fragments):
     if ast.selection_set:
         fields = root.fields()
 
@@ -119,7 +116,6 @@ def _graphql_selections(ast, root, context, variables, fragments):
         return [
             _request_from_selection(
                 selection,
-                context=context,
                 variables=variables,
                 fragments=fragments,
                 field=fields[_field_name(selection)]
@@ -187,10 +183,9 @@ def _merge_fields(selections):
     return merged.values()
 
 
-def _request_from_selection(selection, field, context, variables, fragments):
+def _request_from_selection(selection, field, variables, fragments):
     return request_from_graphql_ast(
         selection,
-        context=context,
         variables=variables,
         fragments=fragments,
         field=field,
