@@ -155,7 +155,7 @@ def relationship(join=None, args=None, internal=False, **kwargs):
 class Relationship(FieldBase):
     def __init__(self, target, process_results, wrap_type, build_query, join, args, internal):
         self.target = target
-        self.build_query = build_query
+        self._build_query = build_query
         self.join = join
         self.args = args
         self._process_results = process_results
@@ -166,7 +166,7 @@ class Relationship(FieldBase):
         if target is None:
             target = self.target
         if build_query is None:
-            build_query = self.build_query
+            build_query = self._build_query
         if join is None:
             join = self.join
         if args is None:
@@ -192,7 +192,7 @@ class Relationship(FieldBase):
         ]
 
     def create_reader(self, request, parent_query, context):
-        query = self.build_query(request.args, parent_query, context)
+        query = self._build_query(request.args, parent_query, context)
         join_fields = self.target.join_fields()
         join_selections = [
             _request_field(field=join_fields[child_key])
