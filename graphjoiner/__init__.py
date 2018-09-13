@@ -315,10 +315,7 @@ class ScalarJoinType(Value):
         return self._target.fields()[self._field_name]
 
     def fields(self):
-        if isinstance(self._field, Relationship):
-            return self._field.target.fields()
-        else:
-            return {}
+        return self._field.target.fields()
 
     def join_fields(self):
         return self._target.join_fields()
