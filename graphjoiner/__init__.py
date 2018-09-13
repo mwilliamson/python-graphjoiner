@@ -123,7 +123,7 @@ class Field(FieldBase):
             setattr(self, key, value)
 
     def immediate_selections(self, parent, selection):
-        return (selection, )
+        return (_request_to_immediate_selection(selection), )
     
     def create_reader(self, request, parent_query, context):
         return lambda immediates: immediates[0]
@@ -418,11 +418,18 @@ def _nullable(graphql_type):
         return graphql_type
 
 
+class ImmediateSelection(object):
+    def __init__(self, field, args):
+        self.field = field
+        self.args = args
+        
+        
 def _request_field(field):
-    return Request(
+    return ImmediateSelection(
         field=field,
-        key=None,
         args={},
-        selections=(),
-        join_selections=(),
     )
+
+
+def _request_to_immediate_selection(request):
+    return ImmediateSelection(field=request.field, args=request.args)
