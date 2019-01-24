@@ -1,8 +1,8 @@
 GraphJoiner: Implementing GraphQL with joins
 ============================================
 
-**GraphJoiner has been superseded by GraphLayer_,
-which uses the same fundamental ideas with a significantly simpler API.**
+GraphJoiner has been superseded by `GraphLayer`_,
+which uses the same fundamental ideas with a significantly simpler API.
 
 .. _GraphLayer: https://github.com/mwilliamson/python-graphlayer
 
